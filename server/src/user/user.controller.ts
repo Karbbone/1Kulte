@@ -6,8 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from './auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
+import { LoginUserDto } from './dto/login-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.entity';
 import { UsersService } from './user.service';
@@ -16,11 +19,13 @@ import { UsersService } from './user.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @UseGuards(AuthGuard)
   @Get()
   findAll(): Promise<User[]> {
     return this.usersService.findAll();
   }
 
+  @UseGuards(AuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string): Promise<User | null> {
     return this.usersService.findOne(id);
@@ -31,6 +36,14 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @Post('/login')
+  login(
+    @Body() loginUserDto: LoginUserDto,
+  ): Promise<{ user: User; token: string } | null> {
+    return this.usersService.login(loginUserDto);
+  }
+
+  @UseGuards(AuthGuard)
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -39,6 +52,7 @@ export class UsersController {
     return this.usersService.update(id, updateUserDto);
   }
 
+  @UseGuards(AuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string): Promise<void> {
     return this.usersService.remove(id);
