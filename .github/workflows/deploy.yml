@@ -1,0 +1,51 @@
+name: Deploy 1Kulte API
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            cd ~/clement/1kulte
+
+            # Pull latest changes
+            git pull origin main
+
+            # Go to server directory
+            cd server
+
+            # Stop existing containers
+            docker compose -f docker-compose.prod.yml down
+
+            # Build and start containers
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            # Wait for MySQL to be ready
+            echo "Waiting for MySQL to be healthy..."
+            sleep 10
+
+            # Run migrations
+            echo "Running database migrations..."
+            docker exec 1kulte-api npm run migration:run:prod
+
+            # Clean up old images
+            docker image prune -f
+
+            # Show running containers
+            docker compose -f docker-compose.prod.yml ps

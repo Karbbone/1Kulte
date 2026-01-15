@@ -1,0 +1,93 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: 1kulte-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - traefik
+      - 1kulte-internal
+    labels:
+      - "traefik.enable=true"
+      # HTTPS Router
+      - "traefik.http.routers.1kulte-api.rule=Host(`api.1kulte.maillet.bzh`)"
+      - "traefik.http.routers.1kulte-api.entrypoints=websecure"
+      - "traefik.http.routers.1kulte-api.tls=true"
+      - "traefik.http.routers.1kulte-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.1kulte-api.loadbalancer.server.port=3000"
+      # HTTP to HTTPS redirect
+      - "traefik.http.middlewares.1kulte-api-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.1kulte-api-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.1kulte-api-http.rule=Host(`api.1kulte.maillet.bzh`)"
+      - "traefik.http.routers.1kulte-api-http.entrypoints=web"
+      - "traefik.http.routers.1kulte-api-http.middlewares=1kulte-api-redirect"
+
+  mysql:
+    image: mysql:8.0
+    container_name: 1kulte-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_HOST: '%'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - 1kulte-internal
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    container_name: 1kulte-adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      - mysql
+    networks:
+      - traefik
+      - 1kulte-internal
+    labels:
+      - "traefik.enable=true"
+      # HTTPS Router
+      - "traefik.http.routers.1kulte-adminer.rule=Host(`adminer.1kulte.maillet.bzh`)"
+      - "traefik.http.routers.1kulte-adminer.entrypoints=websecure"
+      - "traefik.http.routers.1kulte-adminer.tls=true"
+      - "traefik.http.routers.1kulte-adminer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.1kulte-adminer.loadbalancer.server.port=8080"
+      # HTTP to HTTPS redirect
+      - "traefik.http.middlewares.1kulte-adminer-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.1kulte-adminer-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.1kulte-adminer-http.rule=Host(`adminer.1kulte.maillet.bzh`)"
+      - "traefik.http.routers.1kulte-adminer-http.entrypoints=web"
+      - "traefik.http.routers.1kulte-adminer-http.middlewares=1kulte-adminer-redirect"
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  traefik:
+    external: true
+  1kulte-internal:
+    driver: bridge

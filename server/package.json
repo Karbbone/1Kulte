@@ -21,7 +21,8 @@
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/data/datasource.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/data/datasource.ts",
-    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/data/datasource.ts"
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/data/datasource.ts",
+    "migration:run:prod": "NODE_ENV=production npx typeorm migration:run -d dist/data/datasource.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
