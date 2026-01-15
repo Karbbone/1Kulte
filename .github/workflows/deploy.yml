@@ -22,7 +22,10 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
-            cd ~/clement/1kulte
+            set -e
+
+            # Navigate to project directory
+            cd /root/clement/1Kulte
 
             # Pull latest changes
             git pull origin main
@@ -30,15 +33,15 @@ jobs:
             # Go to server directory
             cd server
 
-            # Stop existing containers
-            docker compose -f docker-compose.prod.yml down
+            # Stop existing containers (ignore if not running)
+            docker-compose -f docker-compose.prod.yml down || true
 
             # Build and start containers
-            docker compose -f docker-compose.prod.yml up -d --build
+            docker-compose -f docker-compose.prod.yml up -d --build
 
             # Wait for MySQL to be ready
             echo "Waiting for MySQL to be healthy..."
-            sleep 10
+            sleep 15
 
             # Run migrations
             echo "Running database migrations..."
@@ -48,4 +51,4 @@ jobs:
             docker image prune -f
 
             # Show running containers
-            docker compose -f docker-compose.prod.yml ps
+            docker-compose -f docker-compose.prod.yml ps
