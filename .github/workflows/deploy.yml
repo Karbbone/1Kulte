@@ -40,11 +40,19 @@ jobs:
             # Build and start containers
             docker-compose -f docker-compose.prod.yml up -d --build
 
-            # Wait for MySQL to be ready
-            echo "Waiting for MySQL to be healthy..."
-            sleep 15
+            # Wait for containers to be ready
+            echo "Waiting for containers to start..."
+            sleep 45
 
-            # Run migrations
+            # Check container status
+            echo "Checking container status..."
+            docker ps -a
+
+            # Show API logs if there's an issue
+            echo "API container logs:"
+            docker logs 1kulte-api --tail 50 || true
+
+            # Run migrations only if container is running
             echo "Running database migrations..."
             docker exec 1kulte-api npm run migration:run:prod
 
