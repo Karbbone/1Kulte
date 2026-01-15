@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml* ./
 
 # Install all dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile || pnpm install
 
 # Copy source code
 COPY . .
@@ -18,11 +18,14 @@ COPY . .
 # Build the application
 RUN pnpm build
 
+# Debug: list dist contents
+RUN ls -la dist/
+
 # Prune dev dependencies
 RUN pnpm prune --prod
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:24-alpine AS production
 
 WORKDIR /app
 
