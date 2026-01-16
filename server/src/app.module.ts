@@ -7,8 +7,10 @@ import { AppService } from './app.service';
 import { CulturalPlacePictureModule } from './cultural-place-picture/cultural-place-picture.module';
 import { CulturalPlaceModule } from './cultural-place/cultural-place.module';
 import { FavoriteModule } from './favorite/favorite.module';
+import { QcmModule } from './qcm/qcm.module';
 import { RewardModule } from './reward/reward.module';
 import { MinioModule } from './shares/minio/minio.module';
+import { TrailModule } from './trail/trail.module';
 import { UsersModule } from './user/user.module';
 
 @Module({
@@ -40,6 +42,8 @@ import { UsersModule } from './user/user.module';
     CulturalPlaceModule,
     CulturalPlacePictureModule,
     FavoriteModule,
+    TrailModule,
+    QcmModule,
   ],
   controllers: [AppController],
   providers: [AppService],
