@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { RewardModule } from './reward/reward.module';
 import { UsersModule } from './user/user.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { UsersModule } from './user/user.module';
       inject: [ConfigService],
     }),
     UsersModule,
+    RewardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

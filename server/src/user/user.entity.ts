@@ -29,6 +29,9 @@ export class User {
   @Column({ type: 'boolean', default: false })
   emailVerified: boolean;
 
+  @Column({ type: 'int', default: 0 })
+  points: number;
+
   @Column({ type: 'datetime', nullable: true })
   lastLoginAt: Date;
 
