@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { CulturalPlaceModule } from './cultural-place/cultural-place.module';
 import { RewardModule } from './reward/reward.module';
 import { UsersModule } from './user/user.module';
 
@@ -32,6 +33,7 @@ import { UsersModule } from './user/user.module';
     }),
     UsersModule,
     RewardModule,
+    CulturalPlaceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
