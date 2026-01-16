@@ -4,9 +4,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { CulturalPlacePictureModule } from './cultural-place-picture/cultural-place-picture.module';
 import { CulturalPlaceModule } from './cultural-place/cultural-place.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { RewardModule } from './reward/reward.module';
+import { MinioModule } from './shares/minio/minio.module';
 import { UsersModule } from './user/user.module';
 
 @Module({
@@ -32,9 +34,11 @@ import { UsersModule } from './user/user.module';
       }),
       inject: [ConfigService],
     }),
+    MinioModule,
     UsersModule,
     RewardModule,
     CulturalPlaceModule,
+    CulturalPlacePictureModule,
     FavoriteModule,
   ],
   controllers: [AppController],

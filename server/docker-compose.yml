@@ -28,8 +28,26 @@ services:
     networks:
       - 1kulte-network
 
+  minio:
+    image: minio/minio:latest
+    container_name: 1kulte-minio
+    restart: unless-stopped
+    ports:
+      - '${MINIO_PORT}:9000'
+      - '${MINIO_CONSOLE_PORT}:9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks:
+      - 1kulte-network
+    command: server /data --console-address ":9001"
+
 volumes:
   mysql_data:
+    driver: local
+  minio_data:
     driver: local
 
 networks:
