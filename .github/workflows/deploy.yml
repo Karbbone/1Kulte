@@ -35,10 +35,10 @@ jobs:
             cd server
 
             # Stop existing containers (ignore if not running)
-            docker-compose -f docker-compose.prod.yml down || true
+            docker-compose -p 1kulte-prod -f docker-compose.prod.yml down || true
 
             # Build and start containers
-            docker-compose -f docker-compose.prod.yml up -d --build
+            docker-compose -p 1kulte-prod -f docker-compose.prod.yml up -d --build
 
             # Wait for containers to be ready
             echo "Waiting for containers to start..."
@@ -60,4 +60,4 @@ jobs:
             docker image prune -f
 
             # Show running containers
-            docker-compose -f docker-compose.prod.yml ps
+            docker-compose -p 1kulte-prod -f docker-compose.prod.yml ps
