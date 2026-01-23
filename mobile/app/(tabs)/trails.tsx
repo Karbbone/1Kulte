@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { brandColors } from '@/constants/Colors';
 
-export default function HomeScreen() {
+export default function TrailsScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Accueil</Text>
+      <Text style={styles.title}>Parcours</Text>
     </View>
   );
 }
