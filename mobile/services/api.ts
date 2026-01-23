@@ -42,8 +42,7 @@ class ApiService {
   async register(data: {
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    newsletter?: boolean;
   }): Promise<LoginResponse['user']> {
     const response = await fetch(`${this.baseUrl}/users`, {
       method: 'POST',

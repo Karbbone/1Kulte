@@ -10,15 +10,15 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(100)
-  firstName: string;
+  firstName?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(100)
-  lastName: string;
+  lastName?: string;
 
   @IsEmail()
   @IsNotEmpty()
@@ -36,5 +36,5 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  newsletter?: boolean;
 }

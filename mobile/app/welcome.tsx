@@ -1,6 +1,12 @@
-import { StyleSheet, Text, View, TouchableOpacity, StatusBar } from 'react-native';
-import { useRouter } from 'expo-router';
-import { brandColors } from '@/constants/Colors';
+import { brandColors } from "@/constants/Colors";
+import { useRouter } from "expo-router";
+import {
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -22,7 +28,7 @@ export default function WelcomeScreen() {
         <TouchableOpacity
           style={styles.button}
           activeOpacity={0.8}
-          onPress={() => router.push('/login')}
+          onPress={() => router.push("/login")}
         >
           <Text style={styles.buttonText}>CONNEXION</Text>
         </TouchableOpacity>
@@ -30,7 +36,7 @@ export default function WelcomeScreen() {
         <TouchableOpacity
           style={styles.button}
           activeOpacity={0.8}
-          onPress={() => router.push('/register')}
+          onPress={() => router.push("/register")}
         >
           <Text style={styles.buttonText}>INSCRIPTION</Text>
         </TouchableOpacity>
@@ -48,20 +54,20 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   logo: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   logoOne: {
     fontSize: 48,
-    fontWeight: '900',
+    fontWeight: "900",
     color: brandColors.textWhite,
   },
   logoKulte: {
     fontSize: 48,
-    fontWeight: '900',
+    fontWeight: "900",
     color: brandColors.textCream,
   },
   buttonsContainer: {
@@ -71,12 +77,12 @@ const styles = StyleSheet.create({
     backgroundColor: brandColors.primary,
     paddingVertical: 18,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonText: {
     color: brandColors.textDark,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 1,
   },
 });
