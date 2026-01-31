@@ -10,15 +10,15 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  firstName?: string;
+  firstName: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  lastName?: string;
+  lastName: string;
 
   @IsEmail()
   @IsNotEmpty()

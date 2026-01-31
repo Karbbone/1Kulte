@@ -21,6 +21,8 @@ import { ErrorHandler } from '@/services/errorHandler';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,7 +30,7 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
@@ -46,6 +48,8 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await api.register({
+        firstName,
+        lastName,
         email,
         password,
         newsletter,
@@ -94,6 +98,32 @@ export default function RegisterScreen() {
 
         {/* Form */}
         <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Prénom</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="John"
+              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              value={firstName}
+              onChangeText={setFirstName}
+              autoCapitalize="words"
+              autoComplete="name-given"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Nom</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Doe"
+              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+              autoComplete="name-family"
+            />
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
