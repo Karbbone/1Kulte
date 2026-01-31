@@ -6,13 +6,24 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { AuthGuard } from '../user/auth.guard';
 import { CulturalPlace } from './cultural-place.entity';
 import { CulturalPlaceService } from './cultural-place.service';
 import { CreateCulturalPlaceDto } from './dto/create-cultural-place.dto';
 import { UpdateCulturalPlaceDto } from './dto/update-cultural-place.dto';
+
+interface JwtPayload {
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+}
 
 @Controller('cultural-places')
 export class CulturalPlaceController {
@@ -21,6 +32,28 @@ export class CulturalPlaceController {
   @Get()
   findAll(): Promise<CulturalPlace[]> {
     return this.culturalPlaceService.findAll();
+  }
+
+  /**
+   * GET /cultural-places/popular
+   * Retourne les 5 lieux les plus populaires (basé sur le nombre de favoris)
+   */
+  @Get('popular')
+  findPopular(): Promise<(CulturalPlace & { favoriteCount: number })[]> {
+    return this.culturalPlaceService.findPopular(5);
+  }
+
+  /**
+   * GET /cultural-places/recommendations
+   * Retourne 5 recommandations personnalisées pour l'utilisateur connecté
+   */
+  @UseGuards(AuthGuard)
+  @Get('recommendations')
+  findRecommendations(
+    @Req() request: Request & { user: JwtPayload },
+  ): Promise<CulturalPlace[]> {
+    const userId = request.user.user.id;
+    return this.culturalPlaceService.findRecommendations(userId, 5);
   }
 
   @Get(':id')
