@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { brandColors } from '@/constants/Colors';
 import { api } from '@/services/api';
+import { ErrorHandler } from '@/services/errorHandler';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -55,9 +56,13 @@ export default function RegisterScreen() {
         [{ text: 'OK', onPress: () => router.replace('/login') }]
       );
     } catch (error) {
+      const appError = ErrorHandler.isAppError(error)
+        ? error
+        : ErrorHandler.handle(error);
+
       Alert.alert(
-        'Erreur',
-        error instanceof Error ? error.message : "Erreur lors de l'inscription"
+        "Erreur d'inscription",
+        ErrorHandler.getUserMessage(appError)
       );
     } finally {
       setLoading(false);

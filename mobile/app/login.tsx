@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { brandColors } from '@/constants/Colors';
 import { api } from '@/services/api';
 import { storage } from '@/services/storage';
+import { ErrorHandler } from '@/services/errorHandler';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -36,9 +37,13 @@ export default function LoginScreen() {
       await storage.setUser(response.user);
       router.replace('/(tabs)');
     } catch (error) {
+      const appError = ErrorHandler.isAppError(error)
+        ? error
+        : ErrorHandler.handle(error);
+
       Alert.alert(
-        'Erreur',
-        error instanceof Error ? error.message : 'Erreur de connexion'
+        'Erreur de connexion',
+        ErrorHandler.getUserMessage(appError)
       );
     } finally {
       setLoading(false);

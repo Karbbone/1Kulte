@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from './auth.guard';
@@ -37,10 +38,14 @@ export class UsersController {
   }
 
   @Post('/login')
-  login(
+  async login(
     @Body() loginUserDto: LoginUserDto,
-  ): Promise<{ user: User; token: string } | null> {
-    return this.usersService.login(loginUserDto);
+  ): Promise<{ user: User; token: string }> {
+    const result = await this.usersService.login(loginUserDto);
+    if (!result) {
+      throw new UnauthorizedException('Email ou mot de passe incorrect');
+    }
+    return result;
   }
 
   @UseGuards(AuthGuard)
