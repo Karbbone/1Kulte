@@ -9,6 +9,7 @@ interface LoginResponse {
     email: string;
     firstName: string;
     lastName: string;
+    points: number;
   };
   token: string;
 }
@@ -18,6 +19,28 @@ interface ApiError {
   statusCode: number;
 }
 
+export type CulturalPlaceType = 'art' | 'patrimoine' | 'mythe' | 'musique';
+
+export interface CulturalPlace {
+  id: string;
+  name: string;
+  description: string;
+  postCode: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  type: CulturalPlaceType;
+  createdAt: string;
+  updatedAt: string;
+  favoriteCount?: number;
+}
+
+export interface Favorite {
+  id: string;
+  culturalPlace: CulturalPlace;
+  createdAt: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -25,9 +48,6 @@ class ApiService {
     this.baseUrl = API_URL;
   }
 
-  /**
-   * Effectue une requête fetch avec timeout et gestion d'erreurs robuste
-   */
   private async fetchWithTimeout(
     url: string,
     options: RequestInit,
@@ -46,11 +66,11 @@ class ApiService {
     } catch (error) {
       clearTimeout(timeoutId);
 
-      // Gestion spécifique de l'abort (timeout)
       if (error instanceof Error && error.name === 'AbortError') {
         const timeoutError: AppError = {
           type: ErrorType.TIMEOUT,
-          message: 'La requête a pris trop de temps. Vérifiez votre connexion internet et réessayez.',
+          message:
+            'La requête a pris trop de temps. Vérifiez votre connexion internet et réessayez.',
           originalError: error,
         };
         ErrorHandler.logError(timeoutError, 'API Timeout');
@@ -61,18 +81,14 @@ class ApiService {
     }
   }
 
-  /**
-   * Parse la réponse JSON de manière sécurisée
-   */
   private async safeJsonParse<T>(response: Response): Promise<T> {
     try {
       return await response.json();
     } catch (error) {
-      // Si le parsing JSON échoue, c'est probablement que le serveur est down
-      // ou a renvoyé du HTML/texte au lieu de JSON
       const parseError: AppError = {
         type: ErrorType.SERVER,
-        message: 'Le serveur a renvoyé une réponse invalide. Il est peut-être temporairement indisponible.',
+        message:
+          'Le serveur a renvoyé une réponse invalide. Il est peut-être temporairement indisponible.',
         statusCode: response.status,
         originalError: error,
       };
@@ -81,20 +97,21 @@ class ApiService {
     }
   }
 
-  /**
-   * Gère les erreurs HTTP et extrait le message d'erreur du serveur
-   */
-  private async handleErrorResponse(response: Response, defaultMessage: string): Promise<never> {
+  private async handleErrorResponse(
+    response: Response,
+    defaultMessage: string
+  ): Promise<never> {
     let errorMessage = defaultMessage;
     let apiError: ApiError | null = null;
 
-    // Essayer de parser le JSON d'erreur du serveur
     try {
       apiError = await response.json();
-      errorMessage = apiError.message || defaultMessage;
+      errorMessage = apiError?.message || defaultMessage;
     } catch {
-      // Si on ne peut pas parser le JSON, utiliser un message basé sur le status code
-      errorMessage = this.getErrorMessageFromStatus(response.status, defaultMessage);
+      errorMessage = this.getErrorMessageFromStatus(
+        response.status,
+        defaultMessage
+      );
     }
 
     const appError: AppError = {
@@ -108,10 +125,10 @@ class ApiService {
     throw appError;
   }
 
-  /**
-   * Retourne un message d'erreur approprié selon le code HTTP
-   */
-  private getErrorMessageFromStatus(status: number, defaultMessage: string): string {
+  private getErrorMessageFromStatus(
+    status: number,
+    defaultMessage: string
+  ): string {
     switch (status) {
       case 400:
         return 'Requête invalide. Vérifiez les informations saisies.';
@@ -120,7 +137,7 @@ class ApiService {
       case 403:
         return 'Accès refusé.';
       case 404:
-        return 'Service non trouvé. Vérifiez la configuration de l\'API.';
+        return "Service non trouvé. Vérifiez la configuration de l'API.";
       case 409:
         return 'Ce compte existe déjà.';
       case 422:
@@ -139,13 +156,14 @@ class ApiService {
 
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      const response = await this.fetchWithTimeout(`${this.baseUrl}/users/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/users/login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
       if (!response.ok) {
         await this.handleErrorResponse(response, 'Erreur de connexion');
@@ -153,12 +171,9 @@ class ApiService {
 
       return await this.safeJsonParse<LoginResponse>(response);
     } catch (error) {
-      // Si c'est déjà une AppError, on la relance telle quelle
       if (ErrorHandler.isAppError(error)) {
         throw error;
       }
-
-      // Sinon, on la transforme en AppError
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, 'Login');
       throw appError;
@@ -175,9 +190,7 @@ class ApiService {
     try {
       const response = await this.fetchWithTimeout(`${this.baseUrl}/users`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
@@ -187,14 +200,161 @@ class ApiService {
 
       return await this.safeJsonParse<LoginResponse['user']>(response);
     } catch (error) {
-      // Si c'est déjà une AppError, on la relance telle quelle
       if (ErrorHandler.isAppError(error)) {
         throw error;
       }
-
-      // Sinon, on la transforme en AppError
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, 'Register');
+      throw appError;
+    }
+  }
+
+  async getPopularPlaces(): Promise<CulturalPlace[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/cultural-places/popular`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la récupération des lieux populaires'
+        );
+      }
+
+      return await this.safeJsonParse<CulturalPlace[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'GetPopularPlaces');
+      throw appError;
+    }
+  }
+
+  async getRecommendations(token: string): Promise<CulturalPlace[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/cultural-places/recommendations`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la récupération des recommandations'
+        );
+      }
+
+      return await this.safeJsonParse<CulturalPlace[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'GetRecommendations');
+      throw appError;
+    }
+  }
+
+  async getFavorites(token: string): Promise<Favorite[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/favorites/me`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la récupération des favoris'
+        );
+      }
+
+      return await this.safeJsonParse<Favorite[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'GetFavorites');
+      throw appError;
+    }
+  }
+
+  async addFavorite(token: string, culturalPlaceId: string): Promise<Favorite> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/favorites/${culturalPlaceId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de l'ajout aux favoris"
+        );
+      }
+
+      return await this.safeJsonParse<Favorite>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'AddFavorite');
+      throw appError;
+    }
+  }
+
+  async removeFavorite(token: string, culturalPlaceId: string): Promise<void> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/favorites/${culturalPlaceId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la suppression du favori'
+        );
+      }
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'RemoveFavorite');
       throw appError;
     }
   }
