@@ -14,6 +14,15 @@ export const brandColors = {
   // UI colors
   border: '#4A4543',
   overlay: 'rgba(0, 0, 0, 0.5)',
+
+  // Card colors (Home screen)
+  cardPink: '#F7B9B4',
+  cardBlue: '#3F94BB',
+  cardYellow: '#FDC958',
+  accentOrange: '#E07B39',
+
+  // Home screen background
+  backgroundLight: '#F5F0E6',
 };
 
 const tintColorLight = brandColors.primary;
