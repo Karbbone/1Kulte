@@ -24,10 +24,6 @@ export class CreateCulturalPlaceDto {
   @IsNotEmpty()
   city: string;
 
-  @IsString()
-  @IsOptional()
-  idCulturalType?: string;
-
   @IsNumber()
   @IsOptional()
   latitude?: number;
@@ -36,7 +32,9 @@ export class CreateCulturalPlaceDto {
   @IsOptional()
   longitude?: number;
 
-  @IsEnum(CulturalPlaceType)
-  @IsOptional()
-  type?: CulturalPlaceType;
+  @IsEnum(CulturalPlaceType, {
+    message: 'Le type doit être art, patrimoine, mythe ou musique',
+  })
+  @IsNotEmpty()
+  type: CulturalPlaceType;
 }

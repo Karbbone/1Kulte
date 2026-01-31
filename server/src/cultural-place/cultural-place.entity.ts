@@ -24,16 +24,13 @@ export class CulturalPlace {
   @Column({ type: 'varchar', length: 255, nullable: false })
   city: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  idCulturalType: string;
-
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   latitude: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   longitude: number;
 
-  @Column({ type: 'enum', enum: CulturalPlaceType, default: CulturalPlaceType.OTHER })
+  @Column({ type: 'enum', enum: CulturalPlaceType, nullable: false })
   type: CulturalPlaceType;
 
   @CreateDateColumn({ type: 'datetime' })
