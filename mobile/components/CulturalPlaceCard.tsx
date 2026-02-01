@@ -1,5 +1,6 @@
 import { StyleSheet, View, Image, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { brandColors } from "@/constants/Colors";
 import { CulturalPlace, CulturalPlaceType } from "@/services/api";
 
@@ -28,17 +29,31 @@ export function CulturalPlaceCard({
   onToggleFavorite,
   fullWidth = false,
 }: CulturalPlaceCardProps) {
+  const router = useRouter();
   // Test avec une image externe pour debug (en attendant les nouvelles images)
   const testImage = { uri: `https://picsum.photos/seed/${place.id}/400/284` };
 
+  const handlePress = () => {
+    router.push({
+      pathname: "/cultural-place/[id]",
+      params: { id: place.id, placeData: JSON.stringify(place) },
+    });
+  };
+
   return (
-    <View style={[styles.card, fullWidth && styles.cardFullWidth]}>
+    <Pressable
+      style={[styles.card, fullWidth && styles.cardFullWidth]}
+      onPress={handlePress}
+    >
       <Image source={testImage} style={styles.image} resizeMode="cover" />
 
       {/* Bouton Like */}
       <Pressable
         style={styles.likeButton}
-        onPress={() => onToggleFavorite(place.id)}
+        onPress={(e) => {
+          e.stopPropagation();
+          onToggleFavorite(place.id);
+        }}
       >
         <Ionicons
           name={isFavorite ? "heart" : "heart-outline"}
@@ -63,7 +78,7 @@ export function CulturalPlaceCard({
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
