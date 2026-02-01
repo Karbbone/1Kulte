@@ -5,6 +5,7 @@ import { CulturalPlace, CulturalPlaceType } from "@/services/api";
 
 const CARD_WIDTH = 270;
 const CARD_HEIGHT = 190;
+const FULL_WIDTH_CARD_HEIGHT = 200;
 
 // Images de fond par type
 const typeBackgrounds: Record<CulturalPlaceType, any> = {
@@ -18,18 +19,20 @@ interface CulturalPlaceCardProps {
   place: CulturalPlace;
   isFavorite: boolean;
   onToggleFavorite: (placeId: string) => void;
+  fullWidth?: boolean;
 }
 
 export function CulturalPlaceCard({
   place,
   isFavorite,
   onToggleFavorite,
+  fullWidth = false,
 }: CulturalPlaceCardProps) {
   // Test avec une image externe pour debug (en attendant les nouvelles images)
   const testImage = { uri: `https://picsum.photos/seed/${place.id}/400/284` };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, fullWidth && styles.cardFullWidth]}>
       <Image source={testImage} style={styles.image} resizeMode="cover" />
 
       {/* Bouton Like */}
@@ -71,6 +74,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     marginRight: 16,
+  },
+  cardFullWidth: {
+    width: "100%",
+    height: FULL_WIDTH_CARD_HEIGHT,
+    marginRight: 0,
+    marginBottom: 16,
   },
   image: {
     width: "100%",
