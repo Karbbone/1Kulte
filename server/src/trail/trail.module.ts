@@ -6,6 +6,7 @@ import { TrailController } from './trail.controller';
 import { Trail } from './trail.entity';
 import { TrailRepository } from './trail.repository';
 import { TrailService } from './trail.service';
+import { QRCodeService } from './qrcode.service';
 
 @Module({
   imports: [
@@ -20,8 +21,8 @@ import { TrailService } from './trail.service';
       inject: [ConfigService],
     }),
   ],
-  providers: [TrailService, TrailRepository],
+  providers: [TrailService, TrailRepository, QRCodeService],
   controllers: [TrailController],
-  exports: [TrailService],
+  exports: [TrailService, QRCodeService],
 })
 export class TrailModule {}
