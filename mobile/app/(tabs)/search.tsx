@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import MapView, { Marker, Region } from "react-native-maps";
 import { brandColors } from "@/constants/Colors";
 import { storage } from "@/services/storage";
 import { api, CulturalPlace, CulturalPlaceType, Favorite } from "@/services/api";
@@ -26,74 +27,25 @@ const CATEGORIES: { type: CulturalPlaceType | "all"; label: string; color: strin
   { type: "musique", label: "MUSIQUE", color: "#FFF0F5", borderColor: "#9C27B0" },
 ];
 
-// Données d'exemple pour les lieux culturels
-const EXAMPLE_PLACES: CulturalPlace[] = [
-  {
-    id: "1",
-    name: "Cairn De Gavrinis",
-    description: "Site mégalithique exceptionnel",
-    postCode: "56870",
-    city: "Larmor-Baden",
-    latitude: 47.5716,
-    longitude: -2.8969,
-    type: "art",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "Parc De Kéraveon",
-    description: "Château et parc historique",
-    postCode: "56470",
-    city: "Erdeven",
-    latitude: 47.6375,
-    longitude: -3.1547,
-    type: "patrimoine",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    name: "Forêt de Brocéliande",
-    description: "Forêt légendaire arthurienne",
-    postCode: "35380",
-    city: "Paimpont",
-    latitude: 48.0167,
-    longitude: -2.2,
-    type: "mythe",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "4",
-    name: "Festival Interceltique",
-    description: "Festival de musique celtique",
-    postCode: "56100",
-    city: "Lorient",
-    latitude: 47.75,
-    longitude: -3.3667,
-    type: "musique",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "5",
-    name: "Alignements de Carnac",
-    description: "Site mégalithique majeur",
-    postCode: "56340",
-    city: "Carnac",
-    latitude: 47.5847,
-    longitude: -3.0783,
-    type: "patrimoine",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+const MARKER_COLORS: Record<CulturalPlaceType, string> = {
+  art: "#E07B39",
+  patrimoine: "#3F94BB",
+  mythe: "#4CAF50",
+  musique: "#9C27B0",
+};
+
+const INITIAL_REGION: Region = {
+  latitude: 47.9,
+  longitude: -2.8,
+  latitudeDelta: 2.5,
+  longitudeDelta: 2.5,
+};
 
 export default function SearchScreen() {
-  const [viewMode, setViewMode] = useState<ViewMode>("liste");
+  const router = useRouter();
+  const [viewMode, setViewMode] = useState<ViewMode>("carte");
   const [selectedCategory, setSelectedCategory] = useState<CulturalPlaceType | "all">("all");
-  const [places] = useState<CulturalPlace[]>(EXAMPLE_PLACES);
+  const [places, setPlaces] = useState<CulturalPlace[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,13 +65,13 @@ export default function SearchScreen() {
       const userToken = await storage.getToken();
       setToken(userToken);
 
-      if (userToken) {
-        const userFavorites = await api.getFavorites(userToken);
-        setFavorites(userFavorites);
-      }
+      const [allPlaces, userFavorites] = await Promise.all([
+        api.getCulturalPlaces(),
+        userToken ? api.getFavorites(userToken) : Promise.resolve([]),
+      ]);
 
-      // Pour l'instant on utilise les données d'exemple
-      // Plus tard on pourra charger depuis l'API
+      setPlaces(allPlaces);
+      setFavorites(userFavorites);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -309,12 +261,31 @@ export default function SearchScreen() {
           ))}
         </ScrollView>
       ) : (
-        <View style={styles.mapPlaceholder}>
-          <Ionicons name="map-outline" size={64} color={brandColors.textDark} />
-          <Text style={styles.mapPlaceholderText}>
-            Vue carte à venir
-          </Text>
-        </View>
+        <MapView
+          style={styles.map}
+          initialRegion={INITIAL_REGION}
+          showsUserLocation
+          showsMyLocationButton={false}
+        >
+          {filteredPlaces.map((place) => (
+            <Marker
+              key={place.id}
+              coordinate={{
+                latitude: Number(place.latitude),
+                longitude: Number(place.longitude),
+              }}
+              title={place.name}
+              description={`${place.postCode} - ${place.city}`}
+              pinColor={MARKER_COLORS[place.type]}
+              onCalloutPress={() => {
+                router.push({
+                  pathname: "/cultural-place/[id]",
+                  params: { id: place.id, placeData: JSON.stringify(place) },
+                });
+              }}
+            />
+          ))}
+        </MapView>
       )}
     </SafeAreaView>
   );
@@ -442,15 +413,7 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 40,
   },
-  mapPlaceholder: {
+  map: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    opacity: 0.5,
-  },
-  mapPlaceholderText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: brandColors.textDark,
   },
 });

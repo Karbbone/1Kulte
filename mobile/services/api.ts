@@ -209,6 +209,34 @@ class ApiService {
     }
   }
 
+  async getCulturalPlaces(): Promise<CulturalPlace[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/cultural-places`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la récupération des lieux culturels'
+        );
+      }
+
+      return await this.safeJsonParse<CulturalPlace[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'GetCulturalPlaces');
+      throw appError;
+    }
+  }
+
   async getCulturalPlaceById(id: string): Promise<CulturalPlace> {
     try {
       const response = await this.fetchWithTimeout(
