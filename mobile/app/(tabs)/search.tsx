@@ -258,27 +258,33 @@ export default function SearchScreen() {
         style={styles.categoriesScrollView}
         contentContainerStyle={styles.categoriesContainer}
       >
-        {CATEGORIES.map((category) => (
-          <Pressable
-            key={category.type}
-            style={[
-              styles.categoryChip,
-              { borderColor: category.borderColor },
-            ]}
-            onPress={() => setSelectedCategory(
-              selectedCategory === category.type ? "all" : category.type
-            )}
-          >
-            <Text
+        {CATEGORIES.map((category) => {
+          const isSelected = selectedCategory === category.type;
+          return (
+            <Pressable
+              key={category.type}
               style={[
-                styles.categoryText,
-                { color: category.borderColor },
+                styles.categoryChip,
+                {
+                  borderColor: category.borderColor,
+                  backgroundColor: isSelected ? category.borderColor : "transparent",
+                },
               ]}
+              onPress={() => setSelectedCategory(
+                selectedCategory === category.type ? "all" : category.type
+              )}
             >
-              {category.label}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                style={[
+                  styles.categoryText,
+                  { color: isSelected ? brandColors.backgroundLight : category.borderColor },
+                ]}
+              >
+                {category.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       {/* Contenu */}
