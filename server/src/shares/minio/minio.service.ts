@@ -80,6 +80,14 @@ export class MinioService implements OnModuleInit {
     await this.minioClient.removeObject(this.bucketName, fileName);
   }
 
+  async getObjectStream(fileName: string): Promise<NodeJS.ReadableStream> {
+    return this.minioClient.getObject(this.bucketName, fileName);
+  }
+
+  async getObjectStat(fileName: string): Promise<Minio.BucketItemStat> {
+    return this.minioClient.statObject(this.bucketName, fileName);
+  }
+
   getFileUrl(fileName: string): string {
     const publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
 

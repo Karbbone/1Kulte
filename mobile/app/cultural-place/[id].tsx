@@ -84,7 +84,10 @@ export default function CulturalPlaceDetailScreen() {
   };
 
   const handleStartEnigma = () => {
-    router.push("/(tabs)/trails");
+    router.push({
+      pathname: "/(tabs)/trails",
+      params: { placeId: id, placeName: place?.name },
+    });
   };
 
   if (loading || !place) {

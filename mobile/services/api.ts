@@ -41,6 +41,40 @@ export interface Favorite {
   createdAt: string;
 }
 
+export interface QcmAnswer {
+  id: string;
+  answer: string;
+  isCorrect: boolean;
+}
+
+export interface QcmQuestion {
+  id: string;
+  question: string;
+  image: string | null;
+  imageUrl: string | null;
+  point: number;
+  answers: QcmAnswer[];
+}
+
+export interface Trail {
+  id: string;
+  name: string;
+  description: string;
+  durationMinute: number;
+  difficulty: string;
+  isActive: boolean;
+  culturalPlace: CulturalPlace;
+  questions: QcmQuestion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AnswerResult {
+  isCorrect: boolean;
+  pointsEarned: number;
+  message: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -382,6 +416,98 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, 'AddFavorite');
+      throw appError;
+    }
+  }
+
+  async getQcmQuestions(trailId: string): Promise<QcmQuestion[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/qcm/trail/${trailId}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la récupération des questions'
+        );
+      }
+
+      return await this.safeJsonParse<QcmQuestion[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'GetQcmQuestions');
+      throw appError;
+    }
+  }
+
+  async getTrailById(id: string): Promise<Trail> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/trails/${id}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la récupération du parcours'
+        );
+      }
+
+      return await this.safeJsonParse<Trail>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'GetTrailById');
+      throw appError;
+    }
+  }
+
+  async submitQcmAnswer(
+    token: string,
+    questionId: string,
+    answerId: string
+  ): Promise<AnswerResult> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/qcm/question/${questionId}/submit`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ answerId }),
+        }
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          'Erreur lors de la soumission de la réponse'
+        );
+      }
+
+      return await this.safeJsonParse<AnswerResult>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, 'SubmitQcmAnswer');
       throw appError;
     }
   }
