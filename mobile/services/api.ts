@@ -1,6 +1,6 @@
-import { ErrorHandler, ErrorType, type AppError } from './errorHandler';
+import { ErrorHandler, ErrorType, type AppError } from "./errorHandler";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 const REQUEST_TIMEOUT = 15000; // 15 secondes
 
 interface LoginResponse {
@@ -19,7 +19,7 @@ interface ApiError {
   statusCode: number;
 }
 
-export type CulturalPlaceType = 'art' | 'patrimoine' | 'mythe' | 'musique';
+export type CulturalPlaceType = "art" | "patrimoine" | "mythe" | "musique";
 
 export interface CulturalPlace {
   id: string;
@@ -75,6 +75,17 @@ export interface AnswerResult {
   message: string;
 }
 
+export interface TrailProgress {
+  trailId: string;
+  totalQuestions: number;
+  answeredQuestions: number;
+  correctAnswers: number;
+  totalPoints: number;
+  pointsEarned: number;
+  missingPoints: number;
+  completed: boolean;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -85,7 +96,7 @@ class ApiService {
   private async fetchWithTimeout(
     url: string,
     options: RequestInit,
-    timeout: number = REQUEST_TIMEOUT
+    timeout: number = REQUEST_TIMEOUT,
   ): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -100,14 +111,14 @@ class ApiService {
     } catch (error) {
       clearTimeout(timeoutId);
 
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         const timeoutError: AppError = {
           type: ErrorType.TIMEOUT,
           message:
-            'La requête a pris trop de temps. Vérifiez votre connexion internet et réessayez.',
+            "La requête a pris trop de temps. Vérifiez votre connexion internet et réessayez.",
           originalError: error,
         };
-        ErrorHandler.logError(timeoutError, 'API Timeout');
+        ErrorHandler.logError(timeoutError, "API Timeout");
         throw timeoutError;
       }
 
@@ -122,18 +133,18 @@ class ApiService {
       const parseError: AppError = {
         type: ErrorType.SERVER,
         message:
-          'Le serveur a renvoyé une réponse invalide. Il est peut-être temporairement indisponible.',
+          "Le serveur a renvoyé une réponse invalide. Il est peut-être temporairement indisponible.",
         statusCode: response.status,
         originalError: error,
       };
-      ErrorHandler.logError(parseError, 'JSON Parse Error');
+      ErrorHandler.logError(parseError, "JSON Parse Error");
       throw parseError;
     }
   }
 
   private async handleErrorResponse(
     response: Response,
-    defaultMessage: string
+    defaultMessage: string,
   ): Promise<never> {
     let errorMessage = defaultMessage;
     let apiError: ApiError | null = null;
@@ -144,7 +155,7 @@ class ApiService {
     } catch {
       errorMessage = this.getErrorMessageFromStatus(
         response.status,
-        defaultMessage
+        defaultMessage,
       );
     }
 
@@ -161,28 +172,28 @@ class ApiService {
 
   private getErrorMessageFromStatus(
     status: number,
-    defaultMessage: string
+    defaultMessage: string,
   ): string {
     switch (status) {
       case 400:
-        return 'Requête invalide. Vérifiez les informations saisies.';
+        return "Requête invalide. Vérifiez les informations saisies.";
       case 401:
-        return 'Email ou mot de passe incorrect.';
+        return "Email ou mot de passe incorrect.";
       case 403:
-        return 'Accès refusé.';
+        return "Accès refusé.";
       case 404:
         return "Service non trouvé. Vérifiez la configuration de l'API.";
       case 409:
-        return 'Ce compte existe déjà.';
+        return "Ce compte existe déjà.";
       case 422:
-        return 'Les données fournies sont invalides.';
+        return "Les données fournies sont invalides.";
       case 429:
-        return 'Trop de tentatives. Veuillez réessayer dans quelques minutes.';
+        return "Trop de tentatives. Veuillez réessayer dans quelques minutes.";
       case 500:
       case 502:
       case 503:
       case 504:
-        return 'Le serveur rencontre des difficultés. Veuillez réessayer plus tard.';
+        return "Le serveur rencontre des difficultés. Veuillez réessayer plus tard.";
       default:
         return defaultMessage;
     }
@@ -193,14 +204,14 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/users/login`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
-        }
+        },
       );
 
       if (!response.ok) {
-        await this.handleErrorResponse(response, 'Erreur de connexion');
+        await this.handleErrorResponse(response, "Erreur de connexion");
       }
 
       return await this.safeJsonParse<LoginResponse>(response);
@@ -209,7 +220,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'Login');
+      ErrorHandler.logError(appError, "Login");
       throw appError;
     }
   }
@@ -220,25 +231,28 @@ class ApiService {
     email: string;
     password: string;
     newsletter?: boolean;
-  }): Promise<LoginResponse['user']> {
+  }): Promise<LoginResponse["user"]> {
     try {
       const response = await this.fetchWithTimeout(`${this.baseUrl}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        await this.handleErrorResponse(response, "Erreur lors de l'inscription");
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de l'inscription",
+        );
       }
 
-      return await this.safeJsonParse<LoginResponse['user']>(response);
+      return await this.safeJsonParse<LoginResponse["user"]>(response);
     } catch (error) {
       if (ErrorHandler.isAppError(error)) {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'Register');
+      ErrorHandler.logError(appError, "Register");
       throw appError;
     }
   }
@@ -248,15 +262,15 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/cultural-places`,
         {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        }
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la récupération des lieux culturels'
+          "Erreur lors de la récupération des lieux culturels",
         );
       }
 
@@ -266,7 +280,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'GetCulturalPlaces');
+      ErrorHandler.logError(appError, "GetCulturalPlaces");
       throw appError;
     }
   }
@@ -276,15 +290,15 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/cultural-places/${id}`,
         {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        }
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la récupération du lieu culturel'
+          "Erreur lors de la récupération du lieu culturel",
         );
       }
 
@@ -294,7 +308,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'GetCulturalPlaceById');
+      ErrorHandler.logError(appError, "GetCulturalPlaceById");
       throw appError;
     }
   }
@@ -304,15 +318,15 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/cultural-places/popular`,
         {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        }
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la récupération des lieux populaires'
+          "Erreur lors de la récupération des lieux populaires",
         );
       }
 
@@ -322,7 +336,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'GetPopularPlaces');
+      ErrorHandler.logError(appError, "GetPopularPlaces");
       throw appError;
     }
   }
@@ -332,18 +346,18 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/cultural-places/recommendations`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la récupération des recommandations'
+          "Erreur lors de la récupération des recommandations",
         );
       }
 
@@ -353,7 +367,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'GetRecommendations');
+      ErrorHandler.logError(appError, "GetRecommendations");
       throw appError;
     }
   }
@@ -363,18 +377,18 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/favorites/me`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la récupération des favoris'
+          "Erreur lors de la récupération des favoris",
         );
       }
 
@@ -384,7 +398,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'GetFavorites');
+      ErrorHandler.logError(appError, "GetFavorites");
       throw appError;
     }
   }
@@ -394,18 +408,18 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/favorites/${culturalPlaceId}`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          "Erreur lors de l'ajout aux favoris"
+          "Erreur lors de l'ajout aux favoris",
         );
       }
 
@@ -415,7 +429,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'AddFavorite');
+      ErrorHandler.logError(appError, "AddFavorite");
       throw appError;
     }
   }
@@ -425,15 +439,15 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/qcm/trail/${trailId}`,
         {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        }
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la récupération des questions'
+          "Erreur lors de la récupération des questions",
         );
       }
 
@@ -443,7 +457,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'GetQcmQuestions');
+      ErrorHandler.logError(appError, "GetQcmQuestions");
       throw appError;
     }
   }
@@ -453,15 +467,15 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/trails/${id}`,
         {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        }
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la récupération du parcours'
+          "Erreur lors de la récupération du parcours",
         );
       }
 
@@ -471,7 +485,38 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'GetTrailById');
+      ErrorHandler.logError(appError, "GetTrailById");
+      throw appError;
+    }
+  }
+
+  async getTrailStatus(token: string, trailId: string): Promise<TrailProgress> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/qcm/trail/${trailId}/status`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la récupération du statut du parcours",
+        );
+      }
+
+      return await this.safeJsonParse<TrailProgress>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetTrailStatus");
       throw appError;
     }
   }
@@ -479,25 +524,25 @@ class ApiService {
   async submitQcmAnswer(
     token: string,
     questionId: string,
-    answerId: string
+    answerId: string,
   ): Promise<AnswerResult> {
     try {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/qcm/question/${questionId}/submit`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ answerId }),
-        }
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la soumission de la réponse'
+          "Erreur lors de la soumission de la réponse",
         );
       }
 
@@ -507,7 +552,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'SubmitQcmAnswer');
+      ErrorHandler.logError(appError, "SubmitQcmAnswer");
       throw appError;
     }
   }
@@ -517,18 +562,18 @@ class ApiService {
       const response = await this.fetchWithTimeout(
         `${this.baseUrl}/favorites/${culturalPlaceId}`,
         {
-          method: 'DELETE',
+          method: "DELETE",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
         await this.handleErrorResponse(
           response,
-          'Erreur lors de la suppression du favori'
+          "Erreur lors de la suppression du favori",
         );
       }
     } catch (error) {
@@ -536,7 +581,7 @@ class ApiService {
         throw error;
       }
       const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError, 'RemoveFavorite');
+      ErrorHandler.logError(appError, "RemoveFavorite");
       throw appError;
     }
   }

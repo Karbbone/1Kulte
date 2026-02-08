@@ -25,6 +25,17 @@ export interface QcmQuestionWithUrl extends QcmQuestion {
   imageUrl: string | null;
 }
 
+export interface TrailProgress {
+  trailId: string;
+  totalQuestions: number;
+  answeredQuestions: number;
+  correctAnswers: number;
+  totalPoints: number;
+  pointsEarned: number;
+  missingPoints: number;
+  completed: boolean;
+}
+
 @Injectable()
 export class QcmService {
   constructor(
@@ -38,7 +49,9 @@ export class QcmService {
   private addImageUrl(question: QcmQuestion): QcmQuestionWithUrl {
     return {
       ...question,
-      imageUrl: question.image ? this.minioService.getFileUrl(question.image) : null,
+      imageUrl: question.image
+        ? this.minioService.getFileUrl(question.image)
+        : null,
     };
   }
 
@@ -126,13 +139,13 @@ export class QcmService {
     const question = await this.findQuestion(questionId);
 
     // Vérifier si l'utilisateur a déjà répondu
-    const existingAnswer = await this.userAnswerRepository.findByUserAndQuestion(
-      userId,
-      questionId,
-    );
+    const existingAnswer =
+      await this.userAnswerRepository.findByUserAndQuestion(userId, questionId);
 
-    if (existingAnswer) {
-      throw new BadRequestException('Vous avez déjà répondu à cette question');
+    if (existingAnswer?.isCorrect) {
+      throw new BadRequestException(
+        'Vous avez déjà répondu correctement à cette question',
+      );
     }
 
     // Récupérer la réponse choisie
@@ -142,7 +155,9 @@ export class QcmService {
     }
 
     if (selectedAnswer.qcmQuestion.id !== questionId) {
-      throw new BadRequestException('Cette réponse ne correspond pas à cette question');
+      throw new BadRequestException(
+        'Cette réponse ne correspond pas à cette question',
+      );
     }
 
     // Trouver la bonne réponse
@@ -152,28 +167,44 @@ export class QcmService {
     const isCorrect = selectedAnswer.isCorrect;
     const pointsEarned = isCorrect ? question.point : 0;
 
-    // Enregistrer la réponse de l'utilisateur
-    const userAnswer = this.userAnswerRepository.create({
-      user: { id: userId },
-      qcmQuestion: { id: questionId },
-      qcmAnswer: { id: answerId },
-      isCorrect,
-      pointsEarned,
-    });
-    await this.userAnswerRepository.save(userAnswer);
+    const user = await this.userRepository.findOne(userId);
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
 
-    // Si correct, ajouter les points à l'utilisateur
-    if (isCorrect) {
-      const user = await this.userRepository.findOne(userId);
-      if (user) {
-        user.points += pointsEarned;
-        await this.userRepository.save(user);
+    let pointsToAdd = 0;
+    if (existingAnswer) {
+      existingAnswer.qcmAnswer = { id: answerId } as QcmAnswer;
+      existingAnswer.isCorrect = isCorrect;
+      existingAnswer.pointsEarned = isCorrect ? question.point : 0;
+      await this.userAnswerRepository.save(existingAnswer);
+
+      if (isCorrect) {
+        pointsToAdd = question.point;
       }
+    } else {
+      const userAnswer = this.userAnswerRepository.create({
+        user: { id: userId },
+        qcmQuestion: { id: questionId },
+        qcmAnswer: { id: answerId },
+        isCorrect,
+        pointsEarned,
+      });
+      await this.userAnswerRepository.save(userAnswer);
+
+      if (isCorrect) {
+        pointsToAdd = pointsEarned;
+      }
+    }
+
+    if (pointsToAdd > 0) {
+      user.points += pointsToAdd;
+      await this.userRepository.save(user);
     }
 
     return {
       isCorrect,
-      pointsEarned,
+      pointsEarned: pointsToAdd,
       correctAnswer: correctAnswer!,
       message: isCorrect
         ? `Bonne réponse ! +${pointsEarned} points`
@@ -183,5 +214,35 @@ export class QcmService {
 
   async getUserAnswers(userId: string) {
     return this.userAnswerRepository.findByUser(userId);
+  }
+
+  async getTrailProgress(
+    userId: string,
+    trailId: string,
+  ): Promise<TrailProgress> {
+    const questions = await this.questionRepository.findByTrailId(trailId);
+    const userAnswers = await this.userAnswerRepository.findByUserAndTrail(
+      userId,
+      trailId,
+    );
+
+    const totalPoints = questions.reduce((sum, q) => sum + (q.point || 0), 0);
+    const pointsEarned = userAnswers.reduce(
+      (sum, a) => sum + (a.pointsEarned || 0),
+      0,
+    );
+    const correctAnswers = userAnswers.filter((a) => a.isCorrect).length;
+    const answeredQuestions = userAnswers.length;
+
+    return {
+      trailId,
+      totalQuestions: questions.length,
+      answeredQuestions,
+      correctAnswers,
+      totalPoints,
+      pointsEarned,
+      missingPoints: Math.max(totalPoints - pointsEarned, 0),
+      completed: questions.length > 0 && answeredQuestions >= questions.length,
+    };
   }
 }

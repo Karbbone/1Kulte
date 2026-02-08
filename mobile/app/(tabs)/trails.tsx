@@ -13,32 +13,39 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { brandColors } from "@/constants/Colors";
-import { api, Trail, CulturalPlaceType } from "@/services/api";
+import { api, Trail, CulturalPlaceType, TrailProgress } from "@/services/api";
+import { storage } from "@/services/storage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const TYPE_CONFIG: Record<CulturalPlaceType, { label: string; color: string }> = {
-  art: { label: "ART", color: "#E07B39" },
-  patrimoine: { label: "PATRIMOINE", color: "#3F94BB" },
-  mythe: { label: "MYTHE", color: "#4CAF50" },
-  musique: { label: "MUSIQUE", color: "#9C27B0" },
-};
+const TYPE_CONFIG: Record<CulturalPlaceType, { label: string; color: string }> =
+  {
+    art: { label: "ART", color: "#E07B39" },
+    patrimoine: { label: "PATRIMOINE", color: "#3F94BB" },
+    mythe: { label: "MYTHE", color: "#4CAF50" },
+    musique: { label: "MUSIQUE", color: "#9C27B0" },
+  };
 
 export default function TrailsScreen() {
   const router = useRouter();
-  const { placeName } = useLocalSearchParams<{ placeId?: string; placeName?: string }>();
+  const { placeName } = useLocalSearchParams<{
+    placeId?: string;
+    placeName?: string;
+  }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [scannedTrail, setScannedTrail] = useState<Trail | null>(null);
   const [loadingTrail, setLoadingTrail] = useState(false);
   const [scanError, setScanError] = useState(false);
   const [cameraActive, setCameraActive] = useState(true);
+  const [trailStatus, setTrailStatus] = useState<TrailProgress | null>(null);
+  const [loadingTrailStatus, setLoadingTrailStatus] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       setCameraActive(true);
       return () => setCameraActive(false);
-    }, [])
+    }, []),
   );
 
   useEffect(() => {
@@ -60,6 +67,21 @@ export default function TrailsScreen() {
       if (trailId) {
         const trail = await api.getTrailById(trailId);
         setScannedTrail(trail);
+
+        setLoadingTrailStatus(true);
+        try {
+          const token = await storage.getToken();
+          if (token) {
+            const status = await api.getTrailStatus(token, trailId);
+            setTrailStatus(status);
+          } else {
+            setTrailStatus(null);
+          }
+        } catch {
+          setTrailStatus(null);
+        } finally {
+          setLoadingTrailStatus(false);
+        }
       } else {
         setScanError(true);
       }
@@ -74,6 +96,8 @@ export default function TrailsScreen() {
     setScanned(false);
     setScannedTrail(null);
     setScanError(false);
+    setTrailStatus(null);
+    setLoadingTrailStatus(false);
   };
 
   const handleStartEnigma = () => {
@@ -97,12 +121,20 @@ export default function TrailsScreen() {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.permissionContainer}>
-          <Ionicons name="camera-outline" size={64} color={brandColors.textDark} />
+          <Ionicons
+            name="camera-outline"
+            size={64}
+            color={brandColors.textDark}
+          />
           <Text style={styles.permissionTitle}>Accès à la caméra</Text>
           <Text style={styles.permissionText}>
-            L'accès à la caméra est nécessaire pour scanner les QR codes des lieux culturels.
+            L'accès à la caméra est nécessaire pour scanner les QR codes des
+            lieux culturels.
           </Text>
-          <Pressable style={styles.permissionButton} onPress={requestPermission}>
+          <Pressable
+            style={styles.permissionButton}
+            onPress={requestPermission}
+          >
             <Text style={styles.permissionButtonText}>Autoriser la caméra</Text>
           </Pressable>
         </View>
@@ -112,6 +144,13 @@ export default function TrailsScreen() {
 
   const place = scannedTrail?.culturalPlace;
   const typeConfig = place ? TYPE_CONFIG[place.type] : null;
+  const trailCompleted = Boolean(trailStatus?.completed);
+  const hasMissingPoints = (trailStatus?.missingPoints ?? 0) > 0;
+  const statusMessage = trailCompleted
+    ? hasMissingPoints
+      ? "Ce parcours a déjà été fait, mais il vous reste des points à récupérer"
+      : "Vous pouvez refaire ce parcours mais vous ne gagnerez pas de point"
+    : null;
 
   return (
     <View style={styles.container}>
@@ -126,7 +165,11 @@ export default function TrailsScreen() {
 
       {/* Overlay avec zone de scan */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        <SafeAreaView style={styles.overlay} edges={["top"]} pointerEvents="box-none">
+        <SafeAreaView
+          style={styles.overlay}
+          edges={["top"]}
+          pointerEvents="box-none"
+        >
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Scanner le QR Code</Text>
             {placeName && (
@@ -156,24 +199,43 @@ export default function TrailsScreen() {
             {loadingTrail ? (
               <View style={styles.modalLoading}>
                 <ActivityIndicator size="large" color={brandColors.primary} />
-                <Text style={styles.modalLoadingText}>Chargement du parcours...</Text>
+                <Text style={styles.modalLoadingText}>
+                  Chargement du parcours...
+                </Text>
               </View>
             ) : scannedTrail && place ? (
-              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.modalScroll}
+                showsVerticalScrollIndicator={false}
+              >
                 {/* Nom du lieu */}
                 <Text style={styles.modalPlaceName}>{place.name}</Text>
 
                 {/* Badge type + localisation */}
                 <View style={styles.modalMetaRow}>
                   {typeConfig && (
-                    <View style={[styles.typeBadge, { borderColor: typeConfig.color }]}>
-                      <Text style={[styles.typeBadgeText, { color: typeConfig.color }]}>
+                    <View
+                      style={[
+                        styles.typeBadge,
+                        { borderColor: typeConfig.color },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.typeBadgeText,
+                          { color: typeConfig.color },
+                        ]}
+                      >
                         {typeConfig.label}
                       </Text>
                     </View>
                   )}
                   <View style={styles.locationRow}>
-                    <Ionicons name="location" size={16} color={brandColors.accentOrange} />
+                    <Ionicons
+                      name="location"
+                      size={16}
+                      color={brandColors.accentOrange}
+                    />
                     <Text style={styles.locationText}>
                       {place.postCode} - {place.city}
                     </Text>
@@ -184,53 +246,114 @@ export default function TrailsScreen() {
                 <View style={styles.trailInfoCard}>
                   <Text style={styles.trailName}>{scannedTrail.name}</Text>
                   {scannedTrail.description && (
-                    <Text style={styles.trailDescription}>{scannedTrail.description}</Text>
+                    <Text style={styles.trailDescription}>
+                      {scannedTrail.description}
+                    </Text>
                   )}
                   <View style={styles.trailStats}>
                     {scannedTrail.durationMinute > 0 && (
                       <View style={styles.trailStat}>
-                        <Ionicons name="time-outline" size={18} color={brandColors.textDark} />
-                        <Text style={styles.trailStatText}>{scannedTrail.durationMinute} min</Text>
+                        <Ionicons
+                          name="time-outline"
+                          size={18}
+                          color={brandColors.textDark}
+                        />
+                        <Text style={styles.trailStatText}>
+                          {scannedTrail.durationMinute} min
+                        </Text>
                       </View>
                     )}
                     {scannedTrail.difficulty && (
                       <View style={styles.trailStat}>
-                        <Ionicons name="fitness-outline" size={18} color={brandColors.textDark} />
-                        <Text style={styles.trailStatText}>{scannedTrail.difficulty}</Text>
+                        <Ionicons
+                          name="fitness-outline"
+                          size={18}
+                          color={brandColors.textDark}
+                        />
+                        <Text style={styles.trailStatText}>
+                          {scannedTrail.difficulty}
+                        </Text>
                       </View>
                     )}
                     {scannedTrail.questions && (
                       <View style={styles.trailStat}>
-                        <Ionicons name="help-circle-outline" size={18} color={brandColors.textDark} />
+                        <Ionicons
+                          name="help-circle-outline"
+                          size={18}
+                          color={brandColors.textDark}
+                        />
                         <Text style={styles.trailStatText}>
-                          {scannedTrail.questions.length} question{scannedTrail.questions.length > 1 ? "s" : ""}
+                          {scannedTrail.questions.length} question
+                          {scannedTrail.questions.length > 1 ? "s" : ""}
                         </Text>
                       </View>
                     )}
                   </View>
                 </View>
 
+                {loadingTrailStatus && (
+                  <View style={styles.trailStatusCard}>
+                    <Text style={styles.trailStatusText}>
+                      Chargement du statut du parcours...
+                    </Text>
+                  </View>
+                )}
+
+                {!loadingTrailStatus && statusMessage && (
+                  <View style={styles.trailStatusCard}>
+                    <Text style={styles.trailStatusText}>{statusMessage}</Text>
+                    {hasMissingPoints && (
+                      <Text style={styles.trailStatusSubtext}>
+                        Points manquants : {trailStatus?.missingPoints}
+                      </Text>
+                    )}
+                  </View>
+                )}
+
                 {/* Bouton commencer */}
-                <Pressable style={styles.startButton} onPress={handleStartEnigma}>
+                <Pressable
+                  style={styles.startButton}
+                  onPress={handleStartEnigma}
+                >
                   <Ionicons name="play" size={20} color="white" />
                   <Text style={styles.startButtonText}>Commencer l'énigme</Text>
                 </Pressable>
 
                 {/* Bouton rescanner */}
-                <Pressable style={styles.rescanButton} onPress={handleCloseModal}>
-                  <Ionicons name="scan-outline" size={20} color={brandColors.textDark} />
-                  <Text style={styles.rescanButtonText}>Scanner un autre QR code</Text>
+                <Pressable
+                  style={styles.rescanButton}
+                  onPress={handleCloseModal}
+                >
+                  <Ionicons
+                    name="scan-outline"
+                    size={20}
+                    color={brandColors.textDark}
+                  />
+                  <Text style={styles.rescanButtonText}>
+                    Scanner un autre QR code
+                  </Text>
                 </Pressable>
               </ScrollView>
             ) : (
               <View style={styles.modalError}>
-                <Ionicons name="alert-circle-outline" size={48} color="#E07B39" />
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={48}
+                  color="#E07B39"
+                />
                 <Text style={styles.modalErrorTitle}>QR code non reconnu</Text>
                 <Text style={styles.modalErrorText}>
                   Ce QR code ne correspond à aucun parcours.
                 </Text>
-                <Pressable style={styles.rescanButton} onPress={handleCloseModal}>
-                  <Ionicons name="scan-outline" size={20} color={brandColors.textDark} />
+                <Pressable
+                  style={styles.rescanButton}
+                  onPress={handleCloseModal}
+                >
+                  <Ionicons
+                    name="scan-outline"
+                    size={20}
+                    color={brandColors.textDark}
+                  />
                   <Text style={styles.rescanButtonText}>Réessayer</Text>
                 </Pressable>
               </View>
@@ -465,6 +588,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: brandColors.textDark,
     fontWeight: "500",
+  },
+  trailStatusCard: {
+    backgroundColor: "#FFF6E9",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#F4D6B8",
+    marginBottom: 16,
+  },
+  trailStatusText: {
+    fontSize: 14,
+    color: brandColors.textDark,
+    fontWeight: "600",
+  },
+  trailStatusSubtext: {
+    marginTop: 6,
+    fontSize: 13,
+    color: brandColors.textDark,
+    opacity: 0.8,
   },
   // Buttons
   startButton: {

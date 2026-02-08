@@ -83,7 +83,10 @@ export class UserQcmAnswerRepository {
     private readonly repository: Repository<UserQcmAnswer>,
   ) {}
 
-  findByUserAndQuestion(userId: string, questionId: string): Promise<UserQcmAnswer | null> {
+  findByUserAndQuestion(
+    userId: string,
+    questionId: string,
+  ): Promise<UserQcmAnswer | null> {
     return this.repository.findOne({
       where: {
         user: { id: userId },
@@ -97,6 +100,19 @@ export class UserQcmAnswerRepository {
       where: { user: { id: userId } },
       relations: ['qcmQuestion', 'qcmAnswer'],
     });
+  }
+
+  findByUserAndTrail(
+    userId: string,
+    trailId: string,
+  ): Promise<UserQcmAnswer[]> {
+    return this.repository
+      .createQueryBuilder('userAnswer')
+      .leftJoinAndSelect('userAnswer.qcmQuestion', 'question')
+      .leftJoinAndSelect('userAnswer.qcmAnswer', 'answer')
+      .where('userAnswer.user_id = :userId', { userId })
+      .andWhere('question.trail_id = :trailId', { trailId })
+      .getMany();
   }
 
   create(data: DeepPartial<UserQcmAnswer>): UserQcmAnswer {

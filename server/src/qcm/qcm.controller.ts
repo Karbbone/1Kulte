@@ -16,7 +16,12 @@ import { AuthGuard } from '../user/auth.guard';
 import { User } from '../user/user.entity';
 import { AnswerQcmDto } from './dto/answer-qcm.dto';
 import { CreateQcmQuestionDto } from './dto/create-qcm-question.dto';
-import { AnswerResult, QcmQuestionWithUrl, QcmService } from './qcm.service';
+import {
+  AnswerResult,
+  QcmQuestionWithUrl,
+  QcmService,
+  TrailProgress,
+} from './qcm.service';
 
 interface AuthenticatedRequest extends Request {
   user: { user: User };
@@ -27,8 +32,20 @@ export class QcmController {
   constructor(private readonly qcmService: QcmService) {}
 
   @Get('trail/:trailId')
-  findByTrail(@Param('trailId') trailId: string): Promise<QcmQuestionWithUrl[]> {
+  findByTrail(
+    @Param('trailId') trailId: string,
+  ): Promise<QcmQuestionWithUrl[]> {
     return this.qcmService.findQuestionsByTrailId(trailId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('trail/:trailId/status')
+  getTrailStatus(
+    @Param('trailId') trailId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<TrailProgress> {
+    const userId = req.user.user.id;
+    return this.qcmService.getTrailProgress(userId, trailId);
   }
 
   @Get('question/:id')
@@ -75,7 +92,11 @@ export class QcmController {
     @Req() req: AuthenticatedRequest,
   ): Promise<AnswerResult> {
     const userId = req.user.user.id;
-    return this.qcmService.answerQuestion(userId, questionId, answerDto.answerId);
+    return this.qcmService.answerQuestion(
+      userId,
+      questionId,
+      answerDto.answerId,
+    );
   }
 
   @UseGuards(AuthGuard)
