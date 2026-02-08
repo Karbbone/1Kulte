@@ -12,10 +12,13 @@ export class MinioService implements OnModuleInit {
       endPoint: this.configService.get<string>('MINIO_ENDPOINT') || 'localhost',
       port: parseInt(this.configService.get<string>('MINIO_PORT') || '9000'),
       useSSL: this.configService.get<string>('MINIO_USE_SSL') === 'true',
-      accessKey: this.configService.get<string>('MINIO_ACCESS_KEY') || 'minioadmin',
-      secretKey: this.configService.get<string>('MINIO_SECRET_KEY') || 'minioadmin',
+      accessKey:
+        this.configService.get<string>('MINIO_ACCESS_KEY') || 'minioadmin',
+      secretKey:
+        this.configService.get<string>('MINIO_SECRET_KEY') || 'minioadmin',
     });
-    this.bucketName = this.configService.get<string>('MINIO_BUCKET_NAME') || '1kulte';
+    this.bucketName =
+      this.configService.get<string>('MINIO_BUCKET_NAME') || '1kulte';
   }
 
   async onModuleInit(): Promise<void> {
@@ -58,10 +61,7 @@ export class MinioService implements OnModuleInit {
     return `${sanitized}${extension.toLowerCase()}`;
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-    folder: string,
-  ): Promise<string> {
+  async uploadFile(file: Express.Multer.File, folder: string): Promise<string> {
     const sanitizedName = this.sanitizeFileName(file.originalname);
     const fileName = `${folder}/${Date.now()}-${sanitizedName}`;
 
@@ -80,14 +80,6 @@ export class MinioService implements OnModuleInit {
     await this.minioClient.removeObject(this.bucketName, fileName);
   }
 
-  async getObjectStream(fileName: string): Promise<NodeJS.ReadableStream> {
-    return this.minioClient.getObject(this.bucketName, fileName);
-  }
-
-  async getObjectStat(fileName: string): Promise<Minio.BucketItemStat> {
-    return this.minioClient.statObject(this.bucketName, fileName);
-  }
-
   getFileUrl(fileName: string): string {
     const publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
 
@@ -95,7 +87,8 @@ export class MinioService implements OnModuleInit {
       return `${publicUrl}/${this.bucketName}/${fileName}`;
     }
 
-    const endpoint = this.configService.get<string>('MINIO_ENDPOINT') || 'localhost';
+    const endpoint =
+      this.configService.get<string>('MINIO_ENDPOINT') || 'localhost';
     const port = this.configService.get<string>('MINIO_PORT') || '9000';
     const useSSL = this.configService.get<string>('MINIO_USE_SSL') === 'true';
     const protocol = useSSL ? 'https' : 'http';

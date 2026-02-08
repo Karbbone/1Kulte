@@ -20,7 +20,7 @@ services:
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
       - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
       - MINIO_USE_SSL=false
-      - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL}
+      - MINIO_PUBLIC_URL=https://minio-1kulte.maillet.bzh
     depends_on:
       mysql:
         condition: service_healthy
