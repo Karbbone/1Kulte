@@ -70,7 +70,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, []),
   );
 
   const loadData = async () => {
@@ -79,8 +79,16 @@ export default function ProfileScreen() {
         storage.getUser<User>(),
         storage.getToken(),
       ]);
-      setUser(userData);
-      setToken(userToken);
+
+      if (userData && userToken) {
+        const freshUser = await api.getUserById(userToken, userData.id);
+        setUser(freshUser);
+        await storage.setUser(freshUser);
+        setToken(userToken);
+      } else {
+        setUser(userData);
+        setToken(userToken);
+      }
 
       if (userToken) {
         const userFavorites = await api.getFavorites(userToken);
@@ -95,14 +103,14 @@ export default function ProfileScreen() {
     if (!token) return;
 
     const existingFavorite = favorites.find(
-      (f) => f.culturalPlace.id === placeId
+      (f) => f.culturalPlace.id === placeId,
     );
 
     try {
       if (existingFavorite) {
         await api.removeFavorite(token, placeId);
         setFavorites((prev) =>
-          prev.filter((f) => f.culturalPlace.id !== placeId)
+          prev.filter((f) => f.culturalPlace.id !== placeId),
         );
       } else {
         const newFavorite = await api.addFavorite(token, placeId);
@@ -139,7 +147,11 @@ export default function ProfileScreen() {
         <View style={styles.userCardContainer}>
           <View style={styles.userCard}>
             <View style={styles.avatarContainer}>
-              <Ionicons name="person-outline" size={40} color={brandColors.textDark} />
+              <Ionicons
+                name="person-outline"
+                size={40}
+                color={brandColors.textDark}
+              />
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{displayName}</Text>

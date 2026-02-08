@@ -14,6 +14,14 @@ interface LoginResponse {
   token: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  points: number;
+}
+
 interface ApiError {
   message: string;
   statusCode: number;
@@ -221,6 +229,37 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, "Login");
+      throw appError;
+    }
+  }
+
+  async getUserById(token: string, userId: string): Promise<UserProfile> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/users/${userId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la récupération de l'utilisateur",
+        );
+      }
+
+      return await this.safeJsonParse<UserProfile>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetUserById");
       throw appError;
     }
   }

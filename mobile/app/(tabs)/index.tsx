@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,14 +8,14 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
-import { brandColors } from '@/constants/Colors';
-import { storage } from '@/services/storage';
-import { api, CulturalPlace, Favorite } from '@/services/api';
-import { CulturalPlaceCard } from '@/components/CulturalPlaceCard';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
+import { brandColors } from "@/constants/Colors";
+import { storage } from "@/services/storage";
+import { api, CulturalPlace, Favorite } from "@/services/api";
+import { CulturalPlaceCard } from "@/components/CulturalPlaceCard";
 
 interface User {
   id: string;
@@ -37,7 +37,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, []),
   );
 
   const loadData = async () => {
@@ -46,8 +46,16 @@ export default function HomeScreen() {
         storage.getUser<User>(),
         storage.getToken(),
       ]);
-      setUser(userData);
-      setToken(userToken);
+
+      if (userData && userToken) {
+        const freshUser = await api.getUserById(userToken, userData.id);
+        setUser(freshUser);
+        await storage.setUser(freshUser);
+        setToken(userToken);
+      } else {
+        setUser(userData);
+        setToken(userToken);
+      }
 
       const popularPlaces = await api.getPopularPlaces();
       setPopular(popularPlaces);
@@ -61,7 +69,7 @@ export default function HomeScreen() {
         setFavorites(userFavorites);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error("Error loading data:", error);
     } finally {
       setLoading(false);
       setLoadingPlaces(false);
@@ -72,21 +80,21 @@ export default function HomeScreen() {
     if (!token) return;
 
     const existingFavorite = favorites.find(
-      (f) => f.culturalPlace.id === placeId
+      (f) => f.culturalPlace.id === placeId,
     );
 
     try {
       if (existingFavorite) {
         await api.removeFavorite(token, placeId);
         setFavorites((prev) =>
-          prev.filter((f) => f.culturalPlace.id !== placeId)
+          prev.filter((f) => f.culturalPlace.id !== placeId),
         );
       } else {
         const newFavorite = await api.addFavorite(token, placeId);
         setFavorites((prev) => [...prev, newFavorite]);
       }
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error("Error toggling favorite:", error);
     }
   };
 
@@ -104,7 +112,7 @@ export default function HomeScreen() {
 
   const displayName = user
     ? `${user.firstName} ${user.lastName}`
-    : 'Utilisateur';
+    : "Utilisateur";
 
   const renderPlacesList = (places: CulturalPlace[]) => {
     if (places.length === 0) {
@@ -130,7 +138,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" />
       <ScrollView
         style={styles.scrollView}
@@ -158,7 +166,7 @@ export default function HomeScreen() {
           <View style={styles.rightColumn}>
             <View style={styles.blueCard}>
               <Image
-                source={require('@/assets/images/tirelire.png')}
+                source={require("@/assets/images/tirelire.png")}
                 style={styles.piggyImage}
                 resizeMode="contain"
               />
@@ -227,8 +235,8 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     backgroundColor: brandColors.backgroundLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   scrollView: {
     flex: 1,
@@ -238,9 +246,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 24,
     paddingHorizontal: 20,
   },
@@ -249,7 +257,7 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 26,
-    fontWeight: '700',
+    fontWeight: "700",
     color: brandColors.textDark,
     marginBottom: 4,
   },
@@ -265,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: brandColors.accentOrange,
   },
   cardsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     height: 200,
     paddingHorizontal: 20,
@@ -279,11 +287,11 @@ const styles = StyleSheet.create({
     backgroundColor: brandColors.cardPink,
     borderRadius: 24,
     padding: 20,
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   pointsValue: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: brandColors.textDark,
     marginBottom: 2,
   },
@@ -300,9 +308,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: brandColors.cardBlue,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    overflow: 'visible',
+    alignItems: "center",
+    justifyContent: "flex-end",
+    overflow: "visible",
   },
   piggyImage: {
     width: 180,
@@ -319,15 +327,15 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     color: brandColors.textDark,
   },
   sectionLoader: {
@@ -341,7 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: brandColors.textDark,
     opacity: 0.6,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 40,
   },
 });
