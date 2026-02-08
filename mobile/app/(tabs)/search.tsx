@@ -52,6 +52,7 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchBar, setShowSearchBar] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
+  const mapRef = useRef<MapView>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -122,6 +123,31 @@ export default function SearchScreen() {
   const handleCloseSearch = () => {
     setShowSearchBar(false);
     setSearchQuery("");
+  };
+
+  const searchSuggestions = searchQuery.length > 0
+    ? places.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.city.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 5)
+    : [];
+
+  const handleSelectPlace = (place: CulturalPlace) => {
+    setSearchQuery("");
+    setShowSearchBar(false);
+    if (viewMode === "carte" && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: Number(place.latitude),
+        longitude: Number(place.longitude),
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }, 800);
+    } else {
+      router.push({
+        pathname: "/cultural-place/[id]",
+        params: { id: place.id, placeData: JSON.stringify(place) },
+      });
+    }
   };
 
   return (
@@ -203,6 +229,25 @@ export default function SearchScreen() {
         </View>
       )}
 
+      {/* Suggestions de recherche */}
+      {showSearchBar && searchSuggestions.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {searchSuggestions.map((place) => (
+            <Pressable
+              key={place.id}
+              style={styles.suggestionItem}
+              onPress={() => handleSelectPlace(place)}
+            >
+              <Ionicons name="location-outline" size={18} color={MARKER_COLORS[place.type]} />
+              <View style={styles.suggestionTextContainer}>
+                <Text style={styles.suggestionName} numberOfLines={1}>{place.name}</Text>
+                <Text style={styles.suggestionCity} numberOfLines={1}>{place.city}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {/* Filtres par catégorie */}
       <ScrollView
         horizontal
@@ -262,6 +307,7 @@ export default function SearchScreen() {
         </ScrollView>
       ) : (
         <MapView
+          ref={mapRef}
           style={styles.map}
           initialRegion={INITIAL_REGION}
           showsUserLocation
@@ -274,10 +320,8 @@ export default function SearchScreen() {
                 latitude: Number(place.latitude),
                 longitude: Number(place.longitude),
               }}
-              title={place.name}
-              description={`${place.postCode} - ${place.city}`}
               pinColor={MARKER_COLORS[place.type]}
-              onCalloutPress={() => {
+              onPress={() => {
                 router.push({
                   pathname: "/cultural-place/[id]",
                   params: { id: place.id, placeData: JSON.stringify(place) },
@@ -415,5 +459,35 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  suggestionsContainer: {
+    backgroundColor: "white",
+    marginHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E8E4DC",
+    overflow: "hidden",
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0ECE4",
+    gap: 12,
+  },
+  suggestionTextContainer: {
+    flex: 1,
+  },
+  suggestionName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: brandColors.textDark,
+  },
+  suggestionCity: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 2,
   },
 });
