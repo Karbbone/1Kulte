@@ -80,6 +80,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      MINIO_SERVER_URL: https://minio-1kulte.maillet.bzh
+      MINIO_BROWSER_REDIRECT_URL: https://minio-console-1kulte.maillet.bzh
     volumes:
       - minio_data:/data
     networks:
@@ -101,6 +103,7 @@ services:
       - 'traefik.http.routers.1kulte-minio-http.rule=Host(`minio-1kulte.maillet.bzh`)'
       - 'traefik.http.routers.1kulte-minio-http.entrypoints=web'
       - 'traefik.http.routers.1kulte-minio-http.middlewares=1kulte-minio-redirect'
+      - 'traefik.http.routers.1kulte-minio-http.service=1kulte-minio'
       # Minio Console
       - 'traefik.http.routers.1kulte-minio-console.rule=Host(`minio-console-1kulte.maillet.bzh`)'
       - 'traefik.http.routers.1kulte-minio-console.entrypoints=websecure'
