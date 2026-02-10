@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   View,
@@ -12,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { brandColors } from "@/constants/Colors";
 import { storage } from "@/services/storage";
 import { api, Favorite, TrailHistoryItem } from "@/services/api";
@@ -26,6 +28,7 @@ interface User {
   lastName: string;
   email: string;
   points: number;
+  profilePictureUrl?: string;
 }
 
 
@@ -99,6 +102,41 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleChangeProfilePicture = async () => {
+    if (!user || !token) return;
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission requise",
+        "L'accès à la galerie est nécessaire pour changer votre photo de profil.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled) return;
+
+    try {
+      const updatedUser = await api.uploadProfilePicture(
+        token,
+        user.id,
+        result.assets[0].uri,
+      );
+      setUser(updatedUser);
+      await storage.setUser(updatedUser);
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      Alert.alert("Erreur", "Impossible de mettre à jour la photo de profil.");
+    }
+  };
+
   const isFavorite = (placeId: string): boolean => {
     return favorites.some((f) => f.culturalPlace.id === placeId);
   };
@@ -124,13 +162,23 @@ export default function ProfileScreen() {
         {/* Carte utilisateur */}
         <View style={styles.userCardContainer}>
           <View style={styles.userCard}>
-            <View style={styles.avatarContainer}>
-              <Ionicons
-                name="person-outline"
-                size={40}
-                color={brandColors.textDark}
-              />
-            </View>
+            <Pressable style={styles.avatarContainer} onPress={handleChangeProfilePicture}>
+              {user?.profilePictureUrl ? (
+                <Image
+                  source={{ uri: user.profilePictureUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons
+                  name="person-outline"
+                  size={40}
+                  color={brandColors.textDark}
+                />
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={12} color="#FFF" />
+              </View>
+            </Pressable>
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{displayName}</Text>
               <Text style={styles.userPoints}>{user?.points ?? 0} Points</Text>
@@ -247,6 +295,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 16,
+  },
+  avatarImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: brandColors.accentOrange,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: brandColors.cardYellow,
   },
   userInfo: {
     flex: 1,

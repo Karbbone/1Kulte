@@ -35,6 +35,9 @@ export class User {
   @Column({ type: 'int', default: 0 })
   points: number;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  profilePicture: string;
+
   @Column({ type: 'datetime', nullable: true })
   lastLoginAt: Date;
 

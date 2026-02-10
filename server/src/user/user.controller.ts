@@ -7,8 +7,11 @@ import {
   Patch,
   Post,
   UnauthorizedException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from './auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
@@ -55,6 +58,16 @@ export class UsersController {
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<User | null> {
     return this.usersService.update(id, updateUserDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch(':id/profile-picture')
+  @UseInterceptors(FileInterceptor('image'))
+  uploadProfilePicture(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.usersService.updateProfilePicture(id, file);
   }
 
   @UseGuards(AuthGuard)

@@ -23,6 +23,7 @@ interface User {
   lastName: string;
   email: string;
   points: number;
+  profilePictureUrl?: string;
 }
 
 export default function HomeScreen() {
@@ -151,7 +152,14 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Bonjour {displayName}</Text>
             <Text style={styles.subtitle}>À quoi on joue aujourd'hui ?</Text>
           </View>
-          <View style={styles.avatarCircle} />
+          {user?.profilePictureUrl ? (
+            <Image
+              source={{ uri: user.profilePictureUrl }}
+              style={styles.avatarCircle}
+            />
+          ) : (
+            <View style={styles.avatarCircle} />
+          )}
         </View>
 
         {/* Cards Section */}

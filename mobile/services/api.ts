@@ -20,6 +20,7 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   points: number;
+  profilePictureUrl?: string;
 }
 
 interface ApiError {
@@ -272,6 +273,52 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, "GetUserById");
+      throw appError;
+    }
+  }
+
+  async uploadProfilePicture(
+    token: string,
+    userId: string,
+    imageUri: string,
+  ): Promise<UserProfile> {
+    try {
+      const formData = new FormData();
+      const filename = imageUri.split("/").pop() || "profile.jpg";
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : "image/jpeg";
+
+      formData.append("image", {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as unknown as Blob);
+
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/users/${userId}/profile-picture`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de l'upload de la photo de profil",
+        );
+      }
+
+      return await this.safeJsonParse<UserProfile>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "UploadProfilePicture");
       throw appError;
     }
   }
