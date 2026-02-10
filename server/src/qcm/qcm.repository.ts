@@ -126,7 +126,26 @@ export class UserQcmAnswerRepository {
   findRecentTrailsByUser(
     userId: string,
     limit: number = 5,
-  ): Promise<{ trail: any; culturalPlace: any; lastPlayedAt: string }[]> {
+  ): Promise<
+    {
+      trailId: string;
+      trailName: string;
+      trailDescription: string;
+      trailDurationMinute: number;
+      trailDifficulty: string;
+      culturalPlaceId: string;
+      culturalPlaceName: string;
+      culturalPlaceDescription: string;
+      culturalPlacePostCode: string;
+      culturalPlaceCity: string;
+      culturalPlaceLatitude: number;
+      culturalPlaceLongitude: number;
+      culturalPlaceType: string;
+      culturalPlaceCreatedAt: string;
+      culturalPlaceUpdatedAt: string;
+      lastPlayedAt: string;
+    }[]
+  > {
     return this.repository
       .createQueryBuilder('userAnswer')
       .innerJoin('userAnswer.qcmQuestion', 'question')
