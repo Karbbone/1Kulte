@@ -1,6 +1,10 @@
 import { brandColors } from "@/constants/Colors";
+import { api } from "@/services/api";
+import { storage } from "@/services/storage";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   StatusBar,
   StyleSheet,
   Text,
@@ -10,6 +14,38 @@ import {
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const [token, user] = await Promise.all([
+          storage.getToken(),
+          storage.getUser<{ id: string }>(),
+        ]);
+        if (token && user) {
+          // Valider que le token n'est pas périmé
+          await api.getUserById(token, user.id);
+          router.replace("/(tabs)");
+          return;
+        }
+      } catch {
+        // Token périmé ou invalide, on nettoie et on reste sur welcome
+        await storage.clear();
+      }
+      setChecking(false);
+    };
+    checkSession();
+  }, []);
+
+  if (checking) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator size="large" color={brandColors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

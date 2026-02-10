@@ -122,4 +122,37 @@ export class UserQcmAnswerRepository {
   save(userAnswer: UserQcmAnswer): Promise<UserQcmAnswer> {
     return this.repository.save(userAnswer);
   }
+
+  findRecentTrailsByUser(
+    userId: string,
+    limit: number = 5,
+  ): Promise<{ trail: any; culturalPlace: any; lastPlayedAt: string }[]> {
+    return this.repository
+      .createQueryBuilder('userAnswer')
+      .innerJoin('userAnswer.qcmQuestion', 'question')
+      .innerJoin('question.trail', 'trail')
+      .innerJoin('trail.culturalPlace', 'culturalPlace')
+      .select('trail.id', 'trailId')
+      .addSelect('trail.name', 'trailName')
+      .addSelect('trail.description', 'trailDescription')
+      .addSelect('trail.durationMinute', 'trailDurationMinute')
+      .addSelect('trail.difficulty', 'trailDifficulty')
+      .addSelect('culturalPlace.id', 'culturalPlaceId')
+      .addSelect('culturalPlace.name', 'culturalPlaceName')
+      .addSelect('culturalPlace.description', 'culturalPlaceDescription')
+      .addSelect('culturalPlace.postCode', 'culturalPlacePostCode')
+      .addSelect('culturalPlace.city', 'culturalPlaceCity')
+      .addSelect('culturalPlace.latitude', 'culturalPlaceLatitude')
+      .addSelect('culturalPlace.longitude', 'culturalPlaceLongitude')
+      .addSelect('culturalPlace.type', 'culturalPlaceType')
+      .addSelect('culturalPlace.createdAt', 'culturalPlaceCreatedAt')
+      .addSelect('culturalPlace.updatedAt', 'culturalPlaceUpdatedAt')
+      .addSelect('MAX(userAnswer.createdAt)', 'lastPlayedAt')
+      .where('userAnswer.user_id = :userId', { userId })
+      .groupBy('trail.id')
+      .addGroupBy('culturalPlace.id')
+      .orderBy('lastPlayedAt', 'DESC')
+      .limit(limit)
+      .getRawMany();
+  }
 }

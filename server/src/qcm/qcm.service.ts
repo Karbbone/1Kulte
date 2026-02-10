@@ -36,6 +36,29 @@ export interface TrailProgress {
   completed: boolean;
 }
 
+export interface TrailHistoryItem {
+  trail: {
+    id: string;
+    name: string;
+    description: string;
+    durationMinute: number;
+    difficulty: string;
+  };
+  culturalPlace: {
+    id: string;
+    name: string;
+    description: string;
+    postCode: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+    type: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  lastPlayedAt: string;
+}
+
 @Injectable()
 export class QcmService {
   constructor(
@@ -214,6 +237,34 @@ export class QcmService {
 
   async getUserAnswers(userId: string) {
     return this.userAnswerRepository.findByUser(userId);
+  }
+
+  async getTrailHistory(userId: string): Promise<TrailHistoryItem[]> {
+    const rawResults =
+      await this.userAnswerRepository.findRecentTrailsByUser(userId);
+
+    return rawResults.map((row) => ({
+      trail: {
+        id: row.trailId,
+        name: row.trailName,
+        description: row.trailDescription,
+        durationMinute: row.trailDurationMinute,
+        difficulty: row.trailDifficulty,
+      },
+      culturalPlace: {
+        id: row.culturalPlaceId,
+        name: row.culturalPlaceName,
+        description: row.culturalPlaceDescription,
+        postCode: row.culturalPlacePostCode,
+        city: row.culturalPlaceCity,
+        latitude: row.culturalPlaceLatitude,
+        longitude: row.culturalPlaceLongitude,
+        type: row.culturalPlaceType,
+        createdAt: row.culturalPlaceCreatedAt,
+        updatedAt: row.culturalPlaceUpdatedAt,
+      },
+      lastPlayedAt: row.lastPlayedAt,
+    }));
   }
 
   async getTrailProgress(

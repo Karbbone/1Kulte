@@ -94,6 +94,18 @@ export interface TrailProgress {
   completed: boolean;
 }
 
+export interface TrailHistoryItem {
+  trail: {
+    id: string;
+    name: string;
+    description: string;
+    durationMinute: number;
+    difficulty: string;
+  };
+  culturalPlace: CulturalPlace;
+  lastPlayedAt: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -592,6 +604,37 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, "SubmitQcmAnswer");
+      throw appError;
+    }
+  }
+
+  async getTrailHistory(token: string): Promise<TrailHistoryItem[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/qcm/trail-history`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la récupération de l'historique",
+        );
+      }
+
+      return await this.safeJsonParse<TrailHistoryItem[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetTrailHistory");
       throw appError;
     }
   }

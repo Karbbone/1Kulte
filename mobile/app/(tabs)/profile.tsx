@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { brandColors } from "@/constants/Colors";
 import { storage } from "@/services/storage";
-import { api, CulturalPlace, Favorite } from "@/services/api";
+import { api, Favorite, TrailHistoryItem } from "@/services/api";
 import { CulturalPlaceCard } from "@/components/CulturalPlaceCard";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -28,33 +28,6 @@ interface User {
   points: number;
 }
 
-// Données d'exemple pour l'historique
-const EXAMPLE_HISTORY: CulturalPlace[] = [
-  {
-    id: "h1",
-    name: "Musée De La Cohue",
-    description: "Musée d'art et d'histoire",
-    postCode: "56000",
-    city: "Vannes",
-    latitude: 47.6558,
-    longitude: -2.76,
-    type: "art",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "h2",
-    name: "Cairn De Gavrinis",
-    description: "Site mégalithique",
-    postCode: "56870",
-    city: "Larmor-Baden",
-    latitude: 47.5716,
-    longitude: -2.8969,
-    type: "patrimoine",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
 
 // Données d'exemple pour les achats
 const EXAMPLE_PURCHASES = [
@@ -66,6 +39,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [trailHistory, setTrailHistory] = useState<TrailHistoryItem[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -91,8 +65,12 @@ export default function ProfileScreen() {
       }
 
       if (userToken) {
-        const userFavorites = await api.getFavorites(userToken);
+        const [userFavorites, userTrailHistory] = await Promise.all([
+          api.getFavorites(userToken),
+          api.getTrailHistory(userToken),
+        ]);
         setFavorites(userFavorites);
+        setTrailHistory(userTrailHistory);
       }
     } catch (error) {
       console.error("Error loading profile data:", error);
@@ -186,20 +164,24 @@ export default function ProfileScreen() {
         {/* Section Historique */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Historique</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-          >
-            {EXAMPLE_HISTORY.map((place) => (
-              <CulturalPlaceCard
-                key={place.id}
-                place={place}
-                isFavorite={isFavorite(place.id)}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            ))}
-          </ScrollView>
+          {trailHistory.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
+              {trailHistory.map((item) => (
+                <CulturalPlaceCard
+                  key={item.trail.id}
+                  place={item.culturalPlace}
+                  isFavorite={isFavorite(item.culturalPlace.id)}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptyText}>Aucun historique</Text>
+          )}
         </View>
 
         {/* Section Mes achats */}

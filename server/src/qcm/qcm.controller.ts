@@ -20,6 +20,7 @@ import {
   AnswerResult,
   QcmQuestionWithUrl,
   QcmService,
+  TrailHistoryItem,
   TrailProgress,
 } from './qcm.service';
 
@@ -104,5 +105,14 @@ export class QcmController {
   getMyAnswers(@Req() req: AuthenticatedRequest) {
     const userId = req.user.user.id;
     return this.qcmService.getUserAnswers(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('trail-history')
+  getTrailHistory(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<TrailHistoryItem[]> {
+    const userId = req.user.user.id;
+    return this.qcmService.getTrailHistory(userId);
   }
 }
