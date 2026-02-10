@@ -93,7 +93,9 @@ export class UsersService {
     return this.addProfilePictureUrl(savedUser);
   }
 
-  addProfilePictureUrl(user: User): User & { profilePictureUrl: string | null } {
+  addProfilePictureUrl(
+    user: User,
+  ): User & { profilePictureUrl: string | null } {
     return {
       ...user,
       profilePictureUrl: user.profilePicture

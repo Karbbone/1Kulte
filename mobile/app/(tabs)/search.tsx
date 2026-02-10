@@ -217,15 +217,10 @@ export default function SearchScreen() {
             </Pressable>
           </View>
 
-          {/* Icônes Recherche et Filtre */}
-          <View style={styles.headerIcons}>
-            <Pressable style={styles.iconButton} onPress={handleSearchPress}>
-              <Ionicons name="search-outline" size={24} color={brandColors.textDark} />
-            </Pressable>
-            <Pressable style={styles.iconButton}>
-              <Ionicons name="options-outline" size={24} color={brandColors.textDark} />
-            </Pressable>
-          </View>
+          {/* Icône Recherche */}
+          <Pressable style={styles.iconButton} onPress={handleSearchPress}>
+            <Ionicons name="search-outline" size={24} color={brandColors.textDark} />
+          </Pressable>
         </View>
       )}
 
@@ -406,10 +401,6 @@ const styles = StyleSheet.create({
   },
   toggleTextActive: {
     color: "white",
-  },
-  headerIcons: {
-    flexDirection: "row",
-    gap: 8,
   },
   iconButton: {
     width: 44,
