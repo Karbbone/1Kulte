@@ -18,7 +18,7 @@ import { storage } from "@/services/storage";
 import { api, Reward } from "@/services/api";
 
 export default function RewardsScreen() {
-  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [rewardsByPrice, setRewardsByPrice] = useState<{ cost: number; rewards: Reward[] }[]>([]);
   const [userPoints, setUserPoints] = useState(0);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,17 @@ export default function RewardsScreen() {
         storage.getUser<{ id: string; points: number }>(),
       ]);
 
-      setRewards(rewardsList);
+      // Grouper par coût et trier par coût croissant
+      const grouped = new Map<number, Reward[]>();
+      for (const reward of rewardsList) {
+        const list = grouped.get(reward.cost) || [];
+        list.push(reward);
+        grouped.set(reward.cost, list);
+      }
+      const sortedGroups = Array.from(grouped.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([cost, rewards]) => ({ cost, rewards }));
+      setRewardsByPrice(sortedGroups);
       setToken(userToken);
 
       if (userData && userToken) {
@@ -114,21 +124,26 @@ export default function RewardsScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Boutique</Text>
-        <View style={styles.pointsBadge}>
-          <Ionicons name="star" size={16} color={brandColors.textDark} />
-          <Text style={styles.pointsText}>{userPoints} pts</Text>
-        </View>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {rewards.length === 0 ? (
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Boutique</Text>
+            <Text style={styles.headerSubtitle}>
+              Échange tes points contre des récompenses
+            </Text>
+          </View>
+          <View style={styles.pointsBadge}>
+            <Ionicons name="star" size={16} color={brandColors.textDark} />
+            <Text style={styles.pointsText}>{userPoints} pts</Text>
+          </View>
+        </View>
+
+        {rewardsByPrice.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons
               name="bag-outline"
@@ -141,56 +156,64 @@ export default function RewardsScreen() {
             </Text>
           </View>
         ) : (
-          rewards.map((reward) => (
-            <View key={reward.id} style={styles.card}>
-              {reward.imageUrl ? (
-                <Image
-                  source={{ uri: reward.imageUrl }}
-                  style={styles.cardImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.cardImagePlaceholder}>
-                  <Ionicons
-                    name="gift-outline"
-                    size={48}
-                    color={brandColors.textDark}
-                    style={{ opacity: 0.3 }}
-                  />
-                </View>
-              )}
-              <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>{reward.title}</Text>
-                {reward.description ? (
-                  <Text style={styles.cardDescription} numberOfLines={2}>
-                    {reward.description}
-                  </Text>
-                ) : null}
-                <View style={styles.cardFooter}>
-                  <View style={styles.costBadge}>
-                    <Ionicons
-                      name="star"
-                      size={14}
-                      color={brandColors.textDark}
-                    />
-                    <Text style={styles.costText}>{reward.cost} pts</Text>
-                  </View>
+          rewardsByPrice.map((group) => (
+            <View key={group.cost} style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{group.cost} points</Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.rewardsList}
+              >
+                {group.rewards.map((reward) => (
                   <Pressable
-                    style={[
-                      styles.buyButton,
-                      userPoints < reward.cost && styles.buyButtonDisabled,
-                    ]}
+                    key={reward.id}
+                    style={styles.card}
                     onPress={() => handlePurchase(reward)}
                     disabled={purchasing === reward.id}
                   >
-                    {purchasing === reward.id ? (
-                      <ActivityIndicator size="small" color="#FFF" />
+                    {reward.imageUrl ? (
+                      <Image
+                        source={{ uri: reward.imageUrl }}
+                        style={styles.cardImage}
+                        resizeMode="cover"
+                      />
                     ) : (
-                      <Text style={styles.buyButtonText}>Acheter</Text>
+                      <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
+                        <Ionicons
+                          name="gift-outline"
+                          size={40}
+                          color={brandColors.textDark}
+                          style={{ opacity: 0.3 }}
+                        />
+                      </View>
+                    )}
+
+                    {/* Loading overlay */}
+                    {purchasing === reward.id && (
+                      <View style={styles.purchasingOverlay}>
+                        <ActivityIndicator size="small" color="#FFF" />
+                      </View>
+                    )}
+
+                    {/* Info bar */}
+                    <View style={styles.infoBar}>
+                      <Text style={styles.rewardName} numberOfLines={1}>
+                        {reward.title}
+                      </Text>
+                    </View>
+
+                    {/* Badge insuffisant */}
+                    {userPoints < reward.cost && (
+                      <View style={styles.lockedBadge}>
+                        <Ionicons name="lock-closed" size={14} color="#FFF" />
+                      </View>
                     )}
                   </Pressable>
-                </View>
-              </View>
+                ))}
+              </ScrollView>
             </View>
           ))
         )}
@@ -204,17 +227,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: brandColors.backgroundLight,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    marginBottom: 24,
+  },
+  headerText: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "700",
     color: brandColors.textDark,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: brandColors.textDark,
+    opacity: 0.7,
   },
   pointsBadge: {
     flexDirection: "row",
@@ -230,20 +269,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: brandColors.textDark,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingTop: 80,
@@ -255,67 +286,77 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     textAlign: "center",
   },
+  section: {
+    marginBottom: 28,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: brandColors.textDark,
+  },
+  rewardsList: {
+    paddingLeft: 20,
+    paddingRight: 8,
+  },
   card: {
-    backgroundColor: "#FFF",
+    width: 200,
+    height: 150,
     borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 16,
+    marginRight: 16,
   },
   cardImage: {
     width: "100%",
-    height: 180,
+    height: "100%",
   },
   cardImagePlaceholder: {
-    width: "100%",
-    height: 180,
     backgroundColor: "#F0EBE3",
     justifyContent: "center",
     alignItems: "center",
   },
-  cardContent: {
-    padding: 16,
+  purchasingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  cardTitle: {
-    fontSize: 18,
+  infoBar: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 12,
+    backgroundColor: "#F4EDE5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  rewardName: {
+    fontSize: 16,
     fontWeight: "700",
     color: brandColors.textDark,
     marginBottom: 4,
   },
-  cardDescription: {
-    fontSize: 14,
-    color: brandColors.textDark,
-    opacity: 0.7,
-    marginBottom: 12,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  lockedBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
     alignItems: "center",
-  },
-  costBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  costText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: brandColors.textDark,
-  },
-  buyButton: {
-    backgroundColor: brandColors.accentOrange,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    minWidth: 100,
-    alignItems: "center",
-  },
-  buyButtonDisabled: {
-    opacity: 0.5,
-  },
-  buyButtonText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "700",
   },
 });
