@@ -107,6 +107,20 @@ export interface TrailHistoryItem {
   lastPlayedAt: string;
 }
 
+export interface Reward {
+  id: string;
+  title: string;
+  description: string;
+  cost: number;
+  imageUrl?: string;
+}
+
+export interface UserReward {
+  id: string;
+  reward: Reward;
+  createdAt: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -682,6 +696,96 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, "GetTrailHistory");
+      throw appError;
+    }
+  }
+
+  async getRewards(): Promise<Reward[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la récupération des récompenses",
+        );
+      }
+
+      return await this.safeJsonParse<Reward[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetRewards");
+      throw appError;
+    }
+  }
+
+  async purchaseReward(token: string, rewardId: string): Promise<UserReward> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/${rewardId}/purchase`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de l'achat de la récompense",
+        );
+      }
+
+      return await this.safeJsonParse<UserReward>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "PurchaseReward");
+      throw appError;
+    }
+  }
+
+  async getMyRewards(token: string): Promise<UserReward[]> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/me`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la récupération de vos achats",
+        );
+      }
+
+      return await this.safeJsonParse<UserReward[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetMyRewards");
       throw appError;
     }
   }

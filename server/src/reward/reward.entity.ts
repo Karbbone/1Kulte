@@ -22,6 +22,9 @@ export class Reward {
   @Column({ type: 'int', nullable: false })
   cost: number;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  image: string;
+
   @OneToMany(() => UserReward, (userReward) => userReward.reward)
   userRewards: UserReward[];
 

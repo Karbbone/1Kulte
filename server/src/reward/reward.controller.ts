@@ -3,10 +3,14 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { AuthGuard } from '../user/auth.guard';
 import { User } from '../user/user.entity';
@@ -24,7 +28,7 @@ export class RewardController {
   constructor(private readonly rewardService: RewardService) {}
 
   @Get()
-  findAll(): Promise<Reward[]> {
+  findAll() {
     return this.rewardService.findAll();
   }
 
@@ -32,6 +36,16 @@ export class RewardController {
   @Post()
   create(@Body() createRewardDto: CreateRewardDto): Promise<Reward> {
     return this.rewardService.create(createRewardDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch(':id/image')
+  @UseInterceptors(FileInterceptor('image'))
+  uploadImage(
+    @Param('id') rewardId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.rewardService.uploadImage(rewardId, file);
   }
 
   @UseGuards(AuthGuard)

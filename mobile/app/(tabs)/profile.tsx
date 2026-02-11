@@ -16,7 +16,7 @@ import { useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { brandColors } from "@/constants/Colors";
 import { storage } from "@/services/storage";
-import { api, Favorite, TrailHistoryItem } from "@/services/api";
+import { api, Favorite, TrailHistoryItem, UserReward } from "@/services/api";
 import { CulturalPlaceCard } from "@/components/CulturalPlaceCard";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -31,18 +31,12 @@ interface User {
   profilePictureUrl?: string;
 }
 
-
-// Données d'exemple pour les achats
-const EXAMPLE_PURCHASES = [
-  { id: "p1", image: "https://picsum.photos/seed/purchase1/200/200" },
-  { id: "p2", image: "https://picsum.photos/seed/purchase2/200/200" },
-];
-
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [trailHistory, setTrailHistory] = useState<TrailHistoryItem[]>([]);
+  const [myRewards, setMyRewards] = useState<UserReward[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,12 +62,14 @@ export default function ProfileScreen() {
       }
 
       if (userToken) {
-        const [userFavorites, userTrailHistory] = await Promise.all([
+        const [userFavorites, userTrailHistory, userRewards] = await Promise.all([
           api.getFavorites(userToken),
           api.getTrailHistory(userToken),
+          api.getMyRewards(userToken),
         ]);
         setFavorites(userFavorites);
         setTrailHistory(userTrailHistory);
+        setMyRewards(userRewards);
       }
     } catch (error) {
       console.error("Error loading profile data:", error);
@@ -235,21 +231,41 @@ export default function ProfileScreen() {
         {/* Section Mes achats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mes achats</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalList}
-          >
-            {EXAMPLE_PURCHASES.map((purchase) => (
-              <Pressable key={purchase.id} style={styles.purchaseCard}>
-                <Image
-                  source={{ uri: purchase.image }}
-                  style={styles.purchaseImage}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            ))}
-          </ScrollView>
+          {myRewards.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
+              {myRewards.map((ur) => (
+                <Pressable key={ur.id} style={styles.purchaseCard}>
+                  {ur.reward.imageUrl ? (
+                    <Image
+                      source={{ uri: ur.reward.imageUrl }}
+                      style={styles.purchaseImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.purchaseImage, styles.purchasePlaceholder]}>
+                      <Ionicons
+                        name="gift-outline"
+                        size={32}
+                        color={brandColors.textDark}
+                        style={{ opacity: 0.3 }}
+                      />
+                    </View>
+                  )}
+                  <View style={styles.purchaseOverlay}>
+                    <Text style={styles.purchaseTitle} numberOfLines={2}>
+                      {ur.reward.title}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptyText}>Aucun achat</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -360,5 +376,24 @@ const styles = StyleSheet.create({
   purchaseImage: {
     width: "100%",
     height: "100%",
+  },
+  purchasePlaceholder: {
+    backgroundColor: "#F0EBE3",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  purchaseOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  purchaseTitle: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

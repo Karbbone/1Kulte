@@ -14,6 +14,7 @@ export class UserRewardRepository {
     return this.repository.find({
       where: { user: { id: userId } },
       relations: ['reward'],
+      order: { createdAt: 'DESC' },
     });
   }
 
