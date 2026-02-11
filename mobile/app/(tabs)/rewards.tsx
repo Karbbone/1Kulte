@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   Image,
   Pressable,
   ScrollView,
@@ -17,9 +16,6 @@ import { useFocusEffect } from "expo-router";
 import { brandColors } from "@/constants/Colors";
 import { storage } from "@/services/storage";
 import { api, Reward } from "@/services/api";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_WIDTH = SCREEN_WIDTH - 40;
 
 export default function RewardsScreen() {
   const [rewards, setRewards] = useState<Reward[]>([]);

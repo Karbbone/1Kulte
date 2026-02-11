@@ -8,7 +8,6 @@ import {
   StatusBar,
   Pressable,
   Image,
-  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,9 +17,6 @@ import { brandColors } from "@/constants/Colors";
 import { storage } from "@/services/storage";
 import { api, Favorite, TrailHistoryItem, UserReward } from "@/services/api";
 import { CulturalPlaceCard } from "@/components/CulturalPlaceCard";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const PURCHASE_CARD_WIDTH = (SCREEN_WIDTH - 60) / 2;
 
 interface User {
   id: string;
@@ -238,7 +234,7 @@ export default function ProfileScreen() {
               contentContainerStyle={styles.horizontalList}
             >
               {myRewards.map((ur) => (
-                <Pressable key={ur.id} style={styles.purchaseCard}>
+                <View key={ur.id} style={styles.purchaseCard}>
                   {ur.reward.imageUrl ? (
                     <Image
                       source={{ uri: ur.reward.imageUrl }}
@@ -249,18 +245,28 @@ export default function ProfileScreen() {
                     <View style={[styles.purchaseImage, styles.purchasePlaceholder]}>
                       <Ionicons
                         name="gift-outline"
-                        size={32}
+                        size={40}
                         color={brandColors.textDark}
                         style={{ opacity: 0.3 }}
                       />
                     </View>
                   )}
-                  <View style={styles.purchaseOverlay}>
-                    <Text style={styles.purchaseTitle} numberOfLines={2}>
+                  <View style={styles.purchaseInfoBar}>
+                    <Text style={styles.purchaseName} numberOfLines={1}>
                       {ur.reward.title}
                     </Text>
+                    <View style={styles.purchaseCostRow}>
+                      <Ionicons
+                        name="star"
+                        size={14}
+                        color={brandColors.textDark}
+                      />
+                      <Text style={styles.purchaseCostText}>
+                        {ur.reward.cost} pts
+                      </Text>
+                    </View>
                   </View>
-                </Pressable>
+                </View>
               ))}
             </ScrollView>
           ) : (
@@ -366,12 +372,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   purchaseCard: {
-    width: PURCHASE_CARD_WIDTH,
-    height: PURCHASE_CARD_WIDTH,
-    borderRadius: 12,
+    width: 270,
+    height: 190,
+    borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#FFF",
-    marginRight: 12,
+    marginRight: 16,
   },
   purchaseImage: {
     width: "100%",
@@ -382,18 +387,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  purchaseOverlay: {
+  purchaseInfoBar: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    left: 12,
+    right: 12,
+    bottom: 12,
+    backgroundColor: "#F4EDE5",
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 4,
+    borderRadius: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  purchaseTitle: {
-    color: "#FFF",
+  purchaseName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: brandColors.textDark,
+    marginBottom: 4,
+  },
+  purchaseCostRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  purchaseCostText: {
     fontSize: 12,
-    fontWeight: "600",
+    color: brandColors.textDark,
+    opacity: 0.7,
   },
 });
