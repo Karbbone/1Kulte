@@ -15,14 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: server/package-lock.json
-      - run: npm ci
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
         working-directory: server
-      - run: npm test
+      - run: bun run test
         working-directory: server
 
   deploy:
@@ -70,7 +66,7 @@ jobs:
 
             # Run migrations only if container is running
             echo "Running database migrations..."
-            docker exec 1kulte-api npm run migration:run:prod
+            docker exec 1kulte-api bun run migration:run:prod
 
             # Clean up old images
             docker image prune -f
