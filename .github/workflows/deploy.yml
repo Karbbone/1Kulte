@@ -47,10 +47,10 @@ jobs:
             cd server
 
             # Build new image BEFORE stopping (minimise le downtime)
-            docker-compose -p 1kulte-prod -f docker-compose.prod.yml build
+            docker compose -p 1kulte-prod -f docker-compose.prod.yml build
 
             # Swap: stop old + start new
-            docker-compose -p 1kulte-prod -f docker-compose.prod.yml up -d
+            docker compose -p 1kulte-prod -f docker-compose.prod.yml up -d
 
             # Health check au lieu de sleep 45
             echo "Waiting for API to be ready..."
