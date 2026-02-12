@@ -4,7 +4,7 @@ import {
   CulturalPlacePictureService,
 } from './cultural-place-picture.service';
 import { CulturalPlacePictureRepository } from './cultural-place-picture.repository';
-import { MinioService } from 'src/shares/minio/minio.service';
+import { MinioService } from '../shares/minio/minio.service';
 import { CulturalPlacePicture } from './cultural-place-picture.entity';
 
 describe('CulturalPlacePictureService', () => {

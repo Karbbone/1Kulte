@@ -3,8 +3,8 @@ import { NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from './user.service';
 import { UserRepository } from './user.repository';
-import { CryptService } from 'src/shares/crypt/crypt.service';
-import { MinioService } from 'src/shares/minio/minio.service';
+import { CryptService } from '../shares/crypt/crypt.service';
+import { MinioService } from '../shares/minio/minio.service';
 import { User } from './user.entity';
 
 describe('UsersService', () => {

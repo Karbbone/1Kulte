@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MinioService } from 'src/shares/minio/minio.service';
+import { MinioService } from '../shares/minio/minio.service';
 import { UserRepository } from '../user/user.repository';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { Reward } from './reward.entity';

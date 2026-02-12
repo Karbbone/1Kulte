@@ -4,7 +4,7 @@ import { RewardService } from './reward.service';
 import { RewardRepository } from './reward.repository';
 import { UserRewardRepository } from './user-reward.repository';
 import { UserRepository } from '../user/user.repository';
-import { MinioService } from 'src/shares/minio/minio.service';
+import { MinioService } from '../shares/minio/minio.service';
 import { Reward } from './reward.entity';
 import { UserReward } from './user-reward.entity';
 import { User } from '../user/user.entity';

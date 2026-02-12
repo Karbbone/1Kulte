@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { CryptService } from 'src/shares/crypt/crypt.service';
-import { MinioService } from 'src/shares/minio/minio.service';
+import { CryptService } from '../shares/crypt/crypt.service';
+import { MinioService } from '../shares/minio/minio.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';

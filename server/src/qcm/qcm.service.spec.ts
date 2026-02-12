@@ -7,7 +7,7 @@ import {
   UserQcmAnswerRepository,
 } from './qcm.repository';
 import { UserRepository } from '../user/user.repository';
-import { MinioService } from 'src/shares/minio/minio.service';
+import { MinioService } from '../shares/minio/minio.service';
 import { QcmQuestion } from './qcm-question.entity';
 import { QcmAnswer } from './qcm-answer.entity';
 import { UserQcmAnswer } from './user-qcm-answer.entity';

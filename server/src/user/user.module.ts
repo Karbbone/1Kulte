@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CryptModule } from 'src/shares/crypt/crypt.module';
+import { CryptModule } from '../shares/crypt/crypt.module';
 import { UsersController } from './user.controller';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
