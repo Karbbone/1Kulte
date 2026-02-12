@@ -13,3 +13,8 @@ coverage
 .vscode
 .idea
 test
+pnpm-lock.yaml
+package-lock.json
+bun.lock.bak
+Dockerfile
+docker-compose*.yml

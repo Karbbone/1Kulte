@@ -16,6 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('server/bun.lock') }}
+          restore-keys: bun-
       - run: bun install --frozen-lockfile
         working-directory: server
       - run: bun run test
@@ -37,39 +42,33 @@ jobs:
           script: |
             set -e
 
-            # Navigate to project directory
             cd /root/clement/1Kulte
-
-            # Pull latest changes
             git pull origin main
-
-            # Go to server directory
             cd server
 
-            # Stop existing containers (ignore if not running)
-            docker-compose -p 1kulte-prod -f docker-compose.prod.yml down || true
+            # Build new image BEFORE stopping (minimise le downtime)
+            DOCKER_BUILDKIT=1 docker-compose -p 1kulte-prod -f docker-compose.prod.yml build
 
-            # Build and start containers
-            docker-compose -p 1kulte-prod -f docker-compose.prod.yml up -d --build
+            # Swap: stop old + start new
+            docker-compose -p 1kulte-prod -f docker-compose.prod.yml up -d
 
-            # Wait for containers to be ready
-            echo "Waiting for containers to start..."
-            sleep 45
+            # Health check au lieu de sleep 45
+            echo "Waiting for API to be ready..."
+            for i in $(seq 1 30); do
+              if docker exec 1kulte-api bun -e "fetch('http://localhost:3000').then(() => process.exit(0)).catch(() => process.exit(1))" 2>/dev/null; then
+                echo "API ready after ~${i}s"
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "API failed to start"
+                docker logs 1kulte-api --tail 50
+                exit 1
+              fi
+              sleep 1
+            done
 
-            # Check container status
-            echo "Checking container status..."
-            docker ps -a
-
-            # Show API logs if there's an issue
-            echo "API container logs:"
-            docker logs 1kulte-api --tail 50 || true
-
-            # Run migrations only if container is running
-            echo "Running database migrations..."
+            # Run migrations
             docker exec 1kulte-api bun run migration:run:prod
 
-            # Clean up old images
+            # Cleanup
             docker image prune -f
-
-            # Show running containers
-            docker-compose -p 1kulte-prod -f docker-compose.prod.yml ps
