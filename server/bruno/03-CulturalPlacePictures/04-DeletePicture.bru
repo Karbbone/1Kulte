@@ -1,0 +1,13 @@
+meta {
+  name: Delete Cultural Place Picture
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{host}}/cultural-places/{{culturalPlaceId}}/pictures/{{pictureId}}
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

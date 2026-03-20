@@ -1,0 +1,17 @@
+meta {
+  name: Upload Profile Picture
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{host}}/users/{{userId}}/profile-picture
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}
+
+body:multipart-form {
+  image: @file(/absolute/path/to/profile-picture.png)
+}

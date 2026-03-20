@@ -1,0 +1,25 @@
+meta {
+  name: Create Trail
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{host}}/trails
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    culturalPlaceId: "{{culturalPlaceId}}",
+    name: "Parcours decouverte",
+    description: "Parcours culturel de test",
+    durationMinute: 45,
+    difficulty: "easy",
+    isActive: true
+  }
+}

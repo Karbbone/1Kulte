@@ -1,0 +1,13 @@
+meta {
+  name: Get Recommendations
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{host}}/cultural-places/recommendations
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

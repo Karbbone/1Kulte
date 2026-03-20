@@ -1,0 +1,21 @@
+meta {
+  name: Create QCM Question
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{host}}/qcm/question
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}
+
+body:multipart-form {
+  trailId: {{trailId}}
+  question: Quelle est la bonne reponse ?
+  point: 10
+  answers: [{"answer":"Reponse A","isCorrect":true},{"answer":"Reponse B","isCorrect":false}]
+  image: @file(/absolute/path/to/qcm-question-image.png)
+}

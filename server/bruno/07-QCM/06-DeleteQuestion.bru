@@ -1,0 +1,13 @@
+meta {
+  name: Delete Question
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{host}}/qcm/question/{{qcmQuestionId}}
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

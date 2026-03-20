@@ -1,0 +1,13 @@
+meta {
+  name: Get My Favorites
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/favorites/me
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

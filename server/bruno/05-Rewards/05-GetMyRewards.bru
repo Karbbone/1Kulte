@@ -1,0 +1,13 @@
+meta {
+  name: Get My Rewards
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{host}}/rewards/me
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

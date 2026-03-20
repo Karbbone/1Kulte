@@ -1,0 +1,21 @@
+meta {
+  name: Upload Cultural Place Picture
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{host}}/cultural-places/{{culturalPlaceId}}/pictures
+}
+
+params:query {
+  mainPicture: true
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}
+
+body:multipart-form {
+  file: @file(/absolute/path/to/cultural-place-picture.png)
+}

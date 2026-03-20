@@ -1,0 +1,13 @@
+meta {
+  name: Set Main Picture
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{host}}/cultural-places/{{culturalPlaceId}}/pictures/{{pictureId}}/main
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

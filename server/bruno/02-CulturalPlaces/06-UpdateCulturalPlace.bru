@@ -1,0 +1,26 @@
+meta {
+  name: Update Cultural Place
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{host}}/cultural-places/{{culturalPlaceId}}
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    name: "Chateau de Test Updated",
+    description: "Description mise a jour",
+    postCode: "33000",
+    city: "Bordeaux",
+    latitude: 44.837789,
+    longitude: -0.57918,
+    type: "art"
+  }
+}

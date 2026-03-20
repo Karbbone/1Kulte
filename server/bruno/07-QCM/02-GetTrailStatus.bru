@@ -1,0 +1,13 @@
+meta {
+  name: Get Trail Status
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{host}}/qcm/trail/{{trailId}}/status
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

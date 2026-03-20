@@ -1,0 +1,13 @@
+meta {
+  name: Delete Favorite
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{host}}/favorites/{{culturalPlaceId}}
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

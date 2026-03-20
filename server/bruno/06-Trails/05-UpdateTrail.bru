@@ -1,0 +1,24 @@
+meta {
+  name: Update Trail
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{host}}/trails/{{trailId}}
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    name: "Parcours decouverte update",
+    description: "Description mise a jour",
+    durationMinute: 60,
+    difficulty: "medium",
+    isActive: true
+  }
+}

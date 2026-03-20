@@ -1,0 +1,13 @@
+meta {
+  name: Purchase Reward
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{host}}/rewards/{{rewardId}}/purchase
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

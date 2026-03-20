@@ -1,0 +1,29 @@
+meta {
+  name: Login
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{host}}/users/login
+}
+
+headers {
+  content-type: application/json
+}
+
+body {
+  {
+    email: "clement@example.com",
+    password: "StrongPass123"
+  }
+}
+
+script:post-response {
+  const token = res.body?.token;
+
+  if (token) {
+    bru.setVar("jwt", token);
+    bru.setEnvVar("jwt", token);
+  }
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Update User
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{host}}/users/{{userId}}
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    firstName: "Clement Updated",
+    lastName: "Maillet Updated",
+    email: "clement.updated@example.com",
+    birthDate: "1991-01-01",
+    isActive: true,
+    emailVerified: true
+  }
+}

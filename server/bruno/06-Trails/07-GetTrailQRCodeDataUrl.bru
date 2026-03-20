@@ -1,0 +1,13 @@
+meta {
+  name: Get Trail QRCode Data URL
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{host}}/trails/{{trailId}}/qrcode
+}
+
+params:query {
+  width: 300
+}

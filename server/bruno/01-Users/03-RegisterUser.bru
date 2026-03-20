@@ -1,0 +1,24 @@
+meta {
+  name: Register User
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{host}}/users
+}
+
+headers {
+  content-type: application/json
+}
+
+body {
+  {
+    firstName: "Clement",
+    lastName: "Maillet",
+    email: "clement@example.com",
+    password: "StrongPass123",
+    birthDate: "1990-01-01",
+    newsletter: true
+  }
+}

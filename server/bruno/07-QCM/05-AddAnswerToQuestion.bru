@@ -1,0 +1,21 @@
+meta {
+  name: Add Answer To Question
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{host}}/qcm/question/{{qcmQuestionId}}/answer
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    answer: "Nouvelle proposition",
+    isCorrect: false
+  }
+}

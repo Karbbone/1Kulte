@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "1Kulte API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

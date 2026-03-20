@@ -1,0 +1,17 @@
+meta {
+  name: Upload Reward Image
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{host}}/rewards/{{rewardId}}/image
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}
+
+body:multipart-form {
+  image: @file(/absolute/path/to/reward-image.png)
+}

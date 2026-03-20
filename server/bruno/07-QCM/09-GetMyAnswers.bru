@@ -1,0 +1,13 @@
+meta {
+  name: Get My Answers
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{host}}/qcm/my-answers
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

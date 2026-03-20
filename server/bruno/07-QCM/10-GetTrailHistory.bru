@@ -1,0 +1,13 @@
+meta {
+  name: Get Trail History
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{host}}/qcm/trail-history
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

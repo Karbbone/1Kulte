@@ -1,0 +1,13 @@
+meta {
+  name: Delete Trail
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{host}}/trails/{{trailId}}
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}
