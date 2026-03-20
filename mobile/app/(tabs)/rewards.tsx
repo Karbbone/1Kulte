@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,17 +12,40 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { brandColors } from "@/constants/Colors";
 import { storage } from "@/services/storage";
 import { api, Reward } from "@/services/api";
 
+type RewardCategory = "litterature" | "musees" | "musique" | "cinema";
+
+interface CategoryCard {
+  id: RewardCategory;
+  label: string;
+  color: string;
+}
+
+const CATEGORY_CARDS: CategoryCard[] = [
+  { id: "litterature", label: "LITTERATURE", color: "#F7B9B4" },
+  { id: "musees", label: "MUSEES", color: "#F26A13" },
+  { id: "musique", label: "MUSIQUE", color: "#3F94BB" },
+  { id: "cinema", label: "CINEMA", color: "#F4C64E" },
+];
+
+const CATEGORY_HINTS: Record<RewardCategory, string[]> = {
+  litterature: ["livre", "book", "roman", "bd", "manga", "lecture"],
+  musees: ["musee", "museum", "expo", "exposition", "galerie"],
+  musique: ["musique", "music", "album", "vinyl", "concert", "cd"],
+  cinema: ["cinema", "film", "movie", "ticket", "seance", "serie"],
+};
+
 export default function RewardsScreen() {
-  const [rewardsByPrice, setRewardsByPrice] = useState<{ cost: number; rewards: Reward[] }[]>([]);
-  const [userPoints, setUserPoints] = useState(0);
+  const router = useRouter();
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [adding, setAdding] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<RewardCategory | "all">("all");
 
   useFocusEffect(
     useCallback(() => {
@@ -33,29 +56,13 @@ export default function RewardsScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [rewardsList, userToken, userData] = await Promise.all([
+      const [rewardsList, userToken] = await Promise.all([
         api.getRewards(),
         storage.getToken(),
-        storage.getUser<{ id: string; points: number }>(),
       ]);
 
-      // Grouper par coût et trier par coût croissant
-      const grouped = new Map<number, Reward[]>();
-      for (const reward of rewardsList) {
-        const list = grouped.get(reward.cost) || [];
-        list.push(reward);
-        grouped.set(reward.cost, list);
-      }
-      const sortedGroups = Array.from(grouped.entries())
-        .sort(([a], [b]) => a - b)
-        .map(([cost, rewards]) => ({ cost, rewards }));
-      setRewardsByPrice(sortedGroups);
+      setRewards(rewardsList);
       setToken(userToken);
-
-      if (userData && userToken) {
-        const freshUser = await api.getUserById(userToken, userData.id);
-        setUserPoints(freshUser.points);
-      }
     } catch (error) {
       console.error("Error loading rewards:", error);
     } finally {
@@ -63,46 +70,49 @@ export default function RewardsScreen() {
     }
   };
 
-  const handlePurchase = (reward: Reward) => {
-    if (!token) {
-      Alert.alert("Connexion requise", "Connectez-vous pour acheter des récompenses.");
-      return;
-    }
-
-    if (userPoints < reward.cost) {
-      Alert.alert(
-        "Points insuffisants",
-        `Vous avez ${userPoints} points mais cette récompense coûte ${reward.cost} points.`,
-      );
-      return;
-    }
-
-    Alert.alert(
-      "Confirmer l'achat",
-      `Acheter "${reward.title}" pour ${reward.cost} points ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Acheter",
-          onPress: () => confirmPurchase(reward),
-        },
-      ],
-    );
+  const hashToCategory = (value: string): RewardCategory => {
+    const categories: RewardCategory[] = ["litterature", "musees", "musique", "cinema"];
+    const sum = value.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    return categories[sum % categories.length];
   };
 
-  const confirmPurchase = async (reward: Reward) => {
-    if (!token) return;
+  const getRewardCategory = (reward: Reward): RewardCategory => {
+    const searchable = `${reward.title} ${reward.description || ""}`.toLowerCase();
+
+    for (const category of Object.keys(CATEGORY_HINTS) as RewardCategory[]) {
+      if (CATEGORY_HINTS[category].some((hint) => searchable.includes(hint))) {
+        return category;
+      }
+    }
+
+    return hashToCategory(reward.id || reward.title);
+  };
+
+  const filteredRewards = useMemo(() => {
+    return rewards.filter((reward) => {
+      if (selectedCategory === "all") return true;
+      return getRewardCategory(reward) === selectedCategory;
+    });
+  }, [rewards, selectedCategory]);
+
+  const toggleCategory = (category: RewardCategory) => {
+    setSelectedCategory((prev) => (prev === category ? "all" : category));
+  };
+
+  const handleAddToCart = async (reward: Reward) => {
+    if (!token) {
+      Alert.alert("Connexion requise", "Connectez-vous pour ajouter des articles au panier.");
+      return;
+    }
 
     try {
-      setPurchasing(reward.id);
-      await api.purchaseReward(token, reward.id);
-      setUserPoints((prev) => prev - reward.cost);
-      Alert.alert("Achat réussi", `Vous avez obtenu "${reward.title}" !`);
+      setAdding(reward.id);
+      await api.addRewardToCart(token, reward.id, 1);
+      Alert.alert("Ajoute au panier", `${reward.title} a ete ajoute.`);
     } catch (error: any) {
-      const message = error?.message || "Impossible de finaliser l'achat.";
-      Alert.alert("Erreur", message);
+      Alert.alert("Erreur", error?.message || "Impossible d'ajouter au panier.");
     } finally {
-      setPurchasing(null);
+      setAdding(null);
     }
   };
 
@@ -110,9 +120,6 @@ export default function RewardsScreen() {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <StatusBar barStyle="dark-content" />
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Boutique</Text>
-        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={brandColors.primary} />
         </View>
@@ -129,93 +136,97 @@ export default function RewardsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Boutique</Text>
-            <Text style={styles.headerSubtitle}>
-              Échange tes points contre des récompenses
-            </Text>
-          </View>
-          <View style={styles.pointsBadge}>
-            <Ionicons name="star" size={16} color={brandColors.textDark} />
-            <Text style={styles.pointsText}>{userPoints} pts</Text>
-          </View>
+        <View style={styles.topActions}>
+          <Pressable style={styles.iconCircle}>
+            <Ionicons name="search-outline" size={24} color={brandColors.textDark} />
+          </Pressable>
+          <Pressable style={styles.iconCircle} onPress={() => router.push("/cart")}>
+            <Ionicons name="bag-handle-outline" size={22} color={brandColors.textDark} />
+          </Pressable>
         </View>
 
-        {rewardsByPrice.length === 0 ? (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Categories</Text>
+          <Ionicons name="chevron-forward" size={28} color={brandColors.textDark} />
+        </View>
+
+        <View style={styles.categoriesGrid}>
+          {CATEGORY_CARDS.map((category) => {
+            const selected = selectedCategory === category.id;
+            return (
+              <Pressable
+                key={category.id}
+                style={[
+                  styles.categoryCard,
+                  { backgroundColor: category.color },
+                  selected && styles.categoryCardSelected,
+                ]}
+                onPress={() => toggleCategory(category.id)}
+              >
+                <Text style={styles.categoryLabel}>{category.label}</Text>
+                <Image
+                  source={require("@/assets/images/tirelire.png")}
+                  style={styles.categoryPig}
+                  resizeMode="contain"
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.popularHeader}>
+          <Text style={styles.popularTitle}>Populaire</Text>
+        </View>
+
+        {filteredRewards.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons
-              name="bag-outline"
-              size={60}
-              color={brandColors.textDark}
-              style={{ opacity: 0.3 }}
-            />
-            <Text style={styles.emptyText}>
-              Aucun produit disponible pour le moment
-            </Text>
+            <Ionicons name="bag-outline" size={48} color={brandColors.textDark} style={{ opacity: 0.3 }} />
+            <Text style={styles.emptyText}>Aucun produit pour cette categorie</Text>
           </View>
         ) : (
-          rewardsByPrice.map((group) => (
-            <View key={group.cost} style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{group.cost} points</Text>
-              </View>
+          <View style={styles.productsGrid}>
+            {filteredRewards.map((reward) => {
+              const rewardCategory = getRewardCategory(reward);
+              const categoryLabel = CATEGORY_CARDS.find((c) => c.id === rewardCategory)?.label || "REWARD";
+              const addingInProgress = adding === reward.id;
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.rewardsList}
-              >
-                {group.rewards.map((reward) => (
-                  <Pressable
-                    key={reward.id}
-                    style={styles.card}
-                    onPress={() => handlePurchase(reward)}
-                    disabled={purchasing === reward.id}
-                  >
-                    {reward.imageUrl ? (
-                      <Image
-                        source={{ uri: reward.imageUrl }}
-                        style={styles.cardImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-                        <Ionicons
-                          name="gift-outline"
-                          size={40}
-                          color={brandColors.textDark}
-                          style={{ opacity: 0.3 }}
-                        />
-                      </View>
-                    )}
-
-                    {/* Loading overlay */}
-                    {purchasing === reward.id && (
-                      <View style={styles.purchasingOverlay}>
-                        <ActivityIndicator size="small" color="#FFF" />
-                      </View>
-                    )}
-
-                    {/* Info bar */}
-                    <View style={styles.infoBar}>
-                      <Text style={styles.rewardName} numberOfLines={1}>
-                        {reward.title}
-                      </Text>
+              return (
+                <View key={reward.id} style={styles.productCard}>
+                  {reward.imageUrl ? (
+                    <Image source={{ uri: reward.imageUrl }} style={styles.productImage} resizeMode="contain" />
+                  ) : (
+                    <View style={[styles.productImage, styles.productImageFallback]}>
+                      <Ionicons name="gift-outline" size={34} color={brandColors.textDark} style={{ opacity: 0.3 }} />
                     </View>
+                  )}
 
-                    {/* Badge insuffisant */}
-                    {userPoints < reward.cost && (
-                      <View style={styles.lockedBadge}>
-                        <Ionicons name="lock-closed" size={14} color="#FFF" />
-                      </View>
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          ))
+                  {addingInProgress && (
+                    <View style={styles.addingOverlay}>
+                      <ActivityIndicator size="small" color="#FFF" />
+                    </View>
+                  )}
+
+                  <Text style={styles.productName} numberOfLines={2}>
+                    {reward.title}
+                  </Text>
+                  <Text style={styles.productSubtitle} numberOfLines={1}>
+                    {reward.description || categoryLabel}
+                  </Text>
+
+                  <View style={styles.footerRow}>
+                    <Text style={styles.productPrice}>{reward.cost}€</Text>
+                    <Pressable
+                      style={styles.addButton}
+                      onPress={() => handleAddToCart(reward)}
+                      disabled={addingInProgress}
+                    >
+                      <Ionicons name="add" size={18} color={brandColors.textDark} />
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -225,138 +236,165 @@ export default function RewardsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: brandColors.backgroundLight,
+    backgroundColor: "#F0EBE5",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    paddingTop: 12,
     paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  headerText: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: brandColors.textDark,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: brandColors.textDark,
-    opacity: 0.7,
-  },
-  pointsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: brandColors.cardYellow,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
-  },
-  pointsText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: brandColors.textDark,
+    paddingBottom: 34,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyContainer: {
+  topActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 26,
+  },
+  iconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 3,
+    borderColor: "#3B3433",
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: brandColors.textDark,
-    opacity: 0.6,
-    textAlign: "center",
-  },
-  section: {
-    marginBottom: 28,
+    backgroundColor: "#F0EBE5",
   },
   sectionHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    justifyContent: "space-between",
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 26,
+    fontWeight: "800",
     color: brandColors.textDark,
   },
-  rewardsList: {
-    paddingLeft: 20,
-    paddingRight: 8,
+  categoriesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 40,
   },
-  card: {
-    width: 200,
-    height: 150,
+  categoryCard: {
+    width: "48.5%",
+    minHeight: 110,
     borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
     overflow: "hidden",
-    marginRight: 16,
+    position: "relative",
   },
-  cardImage: {
-    width: "100%",
-    height: "100%",
+  categoryCardSelected: {
+    borderWidth: 3,
+    borderColor: "#3B3433",
   },
-  cardImagePlaceholder: {
-    backgroundColor: "#F0EBE3",
-    justifyContent: "center",
-    alignItems: "center",
+  categoryLabel: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    maxWidth: "62%",
   },
-  purchasingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  infoBar: {
+  categoryPig: {
     position: "absolute",
-    left: 12,
-    right: 12,
-    bottom: 12,
-    backgroundColor: "#F4EDE5",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
+    right: -4,
+    bottom: -8,
+    width: 108,
+    height: 90,
   },
-  rewardName: {
-    fontSize: 16,
-    fontWeight: "700",
+  popularHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  popularTitle: {
+    fontSize: 21,
+    fontWeight: "800",
     color: brandColors.textDark,
-    marginBottom: 4,
   },
-  lockedBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    width: 32,
-    height: 32,
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 44,
+    gap: 10,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: brandColors.textDark,
+    opacity: 0.7,
+  },
+  productsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  productCard: {
+    width: "48.5%",
+    backgroundColor: "#F8F8F8",
     borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 12,
+    minHeight: 238,
+    position: "relative",
+  },
+  productImage: {
+    width: "100%",
+    height: 122,
+    marginBottom: 8,
+  },
+  productImageFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#111",
+    marginBottom: 4,
+    minHeight: 40,
+  },
+  productSubtitle: {
+    fontSize: 11,
+    color: "#2D2B2B",
+    opacity: 0.9,
+    marginBottom: 8,
+  },
+  footerRow: {
+    marginTop: "auto",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  productPrice: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: "#3F94BB",
+  },
+  addButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FDC958",
   },
 });

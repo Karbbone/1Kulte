@@ -1,0 +1,20 @@
+meta {
+  name: Update Cart Item Quantity
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{host}}/rewards/cart/items/{{cartItemId}}
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    quantity: 2
+  }
+}

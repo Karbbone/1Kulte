@@ -115,6 +115,34 @@ export interface Reward {
   imageUrl?: string;
 }
 
+export type RewardDeliveryMode = "home" | "relay";
+export type RewardRelayOption = "standard" | "priority";
+
+export interface RewardCartItem {
+  id: string;
+  quantity: number;
+  lineTotal: number;
+  reward: Reward;
+}
+
+export interface RewardCart {
+  id: string;
+  deliveryMode: RewardDeliveryMode;
+  relayOption: RewardRelayOption;
+  homeRecipient: string | null;
+  homeAddressLine1: string | null;
+  homeAddressLine2: string | null;
+  homePostalCode: string | null;
+  homeCity: string | null;
+  relayPointName: string | null;
+  relayAddress: string | null;
+  items: RewardCartItem[];
+  subtotal: number;
+  deliveryFee: number;
+  walletDiscount: number;
+  total: number;
+}
+
 export interface UserReward {
   id: string;
   reward: Reward;
@@ -755,6 +783,220 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, "PurchaseReward");
+      throw appError;
+    }
+  }
+
+  async getRewardCart(token: string): Promise<RewardCart> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/cart`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la récupération du panier",
+        );
+      }
+
+      return await this.safeJsonParse<RewardCart>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetRewardCart");
+      throw appError;
+    }
+  }
+
+  async addRewardToCart(
+    token: string,
+    rewardId: string,
+    quantity: number = 1,
+  ): Promise<RewardCart> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/cart/items`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ rewardId, quantity }),
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de l'ajout au panier",
+        );
+      }
+
+      return await this.safeJsonParse<RewardCart>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "AddRewardToCart");
+      throw appError;
+    }
+  }
+
+  async updateRewardCartItem(
+    token: string,
+    itemId: string,
+    quantity: number,
+  ): Promise<RewardCart> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/cart/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ quantity }),
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la mise à jour du panier",
+        );
+      }
+
+      return await this.safeJsonParse<RewardCart>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "UpdateRewardCartItem");
+      throw appError;
+    }
+  }
+
+  async removeRewardCartItem(token: string, itemId: string): Promise<RewardCart> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/cart/items/${itemId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la suppression d'un article",
+        );
+      }
+
+      return await this.safeJsonParse<RewardCart>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "RemoveRewardCartItem");
+      throw appError;
+    }
+  }
+
+  async updateRewardCartDelivery(
+    token: string,
+    data: {
+      deliveryMode: RewardDeliveryMode;
+      homeRecipient?: string;
+      homeAddressLine1?: string;
+      homeAddressLine2?: string;
+      homePostalCode?: string;
+      homeCity?: string;
+      relayPointName?: string;
+      relayAddress?: string;
+      relayOption?: RewardRelayOption;
+    },
+  ): Promise<RewardCart> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/cart/delivery`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la mise à jour de la livraison",
+        );
+      }
+
+      return await this.safeJsonParse<RewardCart>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "UpdateRewardCartDelivery");
+      throw appError;
+    }
+  }
+
+  async checkoutRewardCart(
+    token: string,
+  ): Promise<{ purchasedCount: number; total: number }> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/cart/checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la validation de la commande",
+        );
+      }
+
+      return await this.safeJsonParse<{ purchasedCount: number; total: number }>(
+        response,
+      );
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "CheckoutRewardCart");
       throw appError;
     }
   }

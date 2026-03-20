@@ -43,6 +43,12 @@
 - `PATCH /rewards/:id/image` (JWT, multipart field: `image`)
 - `POST /rewards/:id/purchase` (JWT)
 - `GET /rewards/me` (JWT)
+- `GET /rewards/cart` (JWT)
+- `POST /rewards/cart/items` (JWT)
+- `PATCH /rewards/cart/items/:itemId` (JWT)
+- `DELETE /rewards/cart/items/:itemId` (JWT)
+- `PATCH /rewards/cart/delivery` (JWT)
+- `POST /rewards/cart/checkout` (JWT)
 
 ### Trails
 - `GET /trails`
@@ -78,7 +84,10 @@
 - `UpdateCulturalPlaceDto`: `name?`, `description?`, `postCode?`, `city?`, `idCulturalType?`, `latitude?`, `longitude?`, `type?`
 
 ### Reward DTO
-- `CreateRewardDto`: `title`, `description?`, `cost`
+- `CreateRewardDto`: `title`, `description?`, `cost` (prix en euros)
+- `AddRewardCartItemDto`: `rewardId`, `quantity?`
+- `UpdateRewardCartItemDto`: `quantity`
+- `UpdateRewardCartDeliveryDto`: `deliveryMode`, `homeRecipient?`, `homeAddressLine1?`, `homeAddressLine2?`, `homePostalCode?`, `homeCity?`, `relayPointName?`, `relayAddress?`, `relayOption?`
 
 ### Trail DTO
 - `CreateTrailDto`: `culturalPlaceId`, `name`, `description?`, `durationMinute?`, `difficulty?`, `isActive?`
@@ -94,6 +103,8 @@
 - `CulturalPlacePicture`
 - `Favorite`
 - `Reward`
+- `RewardCart`
+- `RewardCartItem`
 - `UserReward`
 - `Trail`
 - `QcmQuestion`

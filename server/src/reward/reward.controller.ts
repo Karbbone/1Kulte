@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -14,9 +15,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { AuthGuard } from '../user/auth.guard';
 import { User } from '../user/user.entity';
+import { AddRewardCartItemDto } from './dto/add-reward-cart-item.dto';
 import { CreateRewardDto } from './dto/create-reward.dto';
+import { UpdateRewardCartDeliveryDto } from './dto/update-reward-cart-delivery.dto';
+import { UpdateRewardCartItemDto } from './dto/update-reward-cart-item.dto';
 import { Reward } from './reward.entity';
-import { RewardService } from './reward.service';
+import { RewardCartResponse, RewardService } from './reward.service';
 import { UserReward } from './user-reward.entity';
 
 interface AuthenticatedRequest extends Request {
@@ -63,5 +67,60 @@ export class RewardController {
   findMyRewards(@Req() req: AuthenticatedRequest): Promise<UserReward[]> {
     const userId = req.user.user.id;
     return this.rewardService.findUserRewards(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('cart')
+  getCart(@Req() req: AuthenticatedRequest): Promise<RewardCartResponse> {
+    const userId = req.user.user.id;
+    return this.rewardService.getCart(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('cart/items')
+  addToCart(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: AddRewardCartItemDto,
+  ): Promise<RewardCartResponse> {
+    const userId = req.user.user.id;
+    return this.rewardService.addToCart(userId, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('cart/items/:itemId')
+  updateCartItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('itemId') itemId: string,
+    @Body() body: UpdateRewardCartItemDto,
+  ): Promise<RewardCartResponse> {
+    const userId = req.user.user.id;
+    return this.rewardService.updateCartItemQuantity(userId, itemId, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Delete('cart/items/:itemId')
+  removeCartItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('itemId') itemId: string,
+  ): Promise<RewardCartResponse> {
+    const userId = req.user.user.id;
+    return this.rewardService.removeCartItem(userId, itemId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('cart/delivery')
+  updateCartDelivery(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: UpdateRewardCartDeliveryDto,
+  ): Promise<RewardCartResponse> {
+    const userId = req.user.user.id;
+    return this.rewardService.updateCartDelivery(userId, body);
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('cart/checkout')
+  checkoutCart(@Req() req: AuthenticatedRequest): Promise<{ purchasedCount: number; total: number }> {
+    const userId = req.user.user.id;
+    return this.rewardService.checkoutCart(userId);
   }
 }

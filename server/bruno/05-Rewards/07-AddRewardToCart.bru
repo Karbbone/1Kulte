@@ -1,0 +1,21 @@
+meta {
+  name: Add Reward To Cart
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{host}}/rewards/cart/items
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    rewardId: "{{rewardId}}",
+    quantity: 1
+  }
+}

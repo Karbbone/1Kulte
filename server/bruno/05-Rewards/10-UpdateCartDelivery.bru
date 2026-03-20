@@ -1,0 +1,23 @@
+meta {
+  name: Update Cart Delivery
+  type: http
+  seq: 10
+}
+
+patch {
+  url: {{host}}/rewards/cart/delivery
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    deliveryMode: "relay",
+    relayPointName: "Point Relais Kulte",
+    relayAddress: "12 Rue du Centre, 56000 Vannes",
+    relayOption: "standard"
+  }
+}

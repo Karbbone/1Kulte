@@ -3,6 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from '../user/user.module';
+import { RewardCartItem } from './reward-cart-item.entity';
+import { RewardCartItemRepository } from './reward-cart-item.repository';
+import { RewardCart } from './reward-cart.entity';
+import { RewardCartRepository } from './reward-cart.repository';
 import { RewardController } from './reward.controller';
 import { Reward } from './reward.entity';
 import { RewardRepository } from './reward.repository';
@@ -12,7 +16,7 @@ import { UserRewardRepository } from './user-reward.repository';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Reward, UserReward]),
+    TypeOrmModule.forFeature([Reward, UserReward, RewardCart, RewardCartItem]),
     UsersModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -24,7 +28,13 @@ import { UserRewardRepository } from './user-reward.repository';
       inject: [ConfigService],
     }),
   ],
-  providers: [RewardService, RewardRepository, UserRewardRepository],
+  providers: [
+    RewardService,
+    RewardRepository,
+    UserRewardRepository,
+    RewardCartRepository,
+    RewardCartItemRepository,
+  ],
   controllers: [RewardController],
   exports: [RewardService],
 })

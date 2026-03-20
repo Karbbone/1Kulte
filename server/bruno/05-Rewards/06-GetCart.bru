@@ -1,0 +1,13 @@
+meta {
+  name: Get Reward Cart
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{host}}/rewards/cart
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}

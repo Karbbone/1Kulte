@@ -28,4 +28,8 @@ export class UserRewardRepository {
   save(userReward: UserReward): Promise<UserReward> {
     return this.repository.save(userReward);
   }
+
+  saveMany(userRewards: UserReward[]): Promise<UserReward[]> {
+    return this.repository.save(userRewards);
+  }
 }

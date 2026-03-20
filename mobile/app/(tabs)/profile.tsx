@@ -257,12 +257,12 @@ export default function ProfileScreen() {
                     </Text>
                     <View style={styles.purchaseCostRow}>
                       <Ionicons
-                        name="star"
+                        name="cash-outline"
                         size={14}
                         color={brandColors.textDark}
                       />
                       <Text style={styles.purchaseCostText}>
-                        {ur.reward.cost} pts
+                        {ur.reward.cost}€
                       </Text>
                     </View>
                   </View>

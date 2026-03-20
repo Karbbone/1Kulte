@@ -1,0 +1,13 @@
+meta {
+  name: Checkout Reward Cart
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{host}}/rewards/cart/checkout
+}
+
+headers {
+  Authorization: Bearer {{jwt}}
+}
