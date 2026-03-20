@@ -41,6 +41,7 @@ export default function CartScreen() {
   const [loading, setLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [submittingDelivery, setSubmittingDelivery] = useState(false);
+  const [submittingWallet, setSubmittingWallet] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useFocusEffect(
@@ -137,6 +138,23 @@ export default function CartScreen() {
       Alert.alert("Erreur", error?.message || "Impossible de finaliser la commande.");
     } finally {
       setCheckoutLoading(false);
+    }
+  };
+
+  const toggleWalletDiscount = async () => {
+    if (!token || !cart) return;
+
+    try {
+      setSubmittingWallet(true);
+      const nextCart = await api.updateRewardCartWalletDiscount(
+        token,
+        !cart.useWalletDiscount,
+      );
+      setCart(nextCart);
+    } catch (error: any) {
+      Alert.alert("Erreur", error?.message || "Impossible de mettre a jour la cagnotte.");
+    } finally {
+      setSubmittingWallet(false);
     }
   };
 
@@ -238,12 +256,32 @@ export default function CartScreen() {
                 <Text style={styles.summaryText}>Livraison</Text>
                 <Text style={styles.summaryText}>{cart.deliveryFee}€</Text>
               </View>
+              <View style={styles.summaryLine}>
+                <Text style={styles.summaryText}>Reduction cagnotte</Text>
+                <Text style={styles.summaryText}>-{cart.walletDiscount}€</Text>
+              </View>
               <View style={styles.summaryDivider} />
               <View style={styles.summaryLine}>
                 <Text style={styles.summaryTotalLabel}>TOTAL</Text>
                 <Text style={styles.summaryTotalValue}>{cart.total}€</Text>
               </View>
             </View>
+            <Pressable
+              style={styles.walletToggleRow}
+              onPress={toggleWalletDiscount}
+              disabled={submittingWallet}
+            >
+              <View style={[styles.walletCheckbox, cart.useWalletDiscount && styles.walletCheckboxChecked]}>
+                {cart.useWalletDiscount && (
+                  <Ionicons name="checkmark" size={14} color="#FFF" />
+                )}
+              </View>
+              <Text style={styles.walletToggleText}>Utiliser ma cagnotte</Text>
+              {submittingWallet && <ActivityIndicator size="small" color={brandColors.textDark} />}
+            </Pressable>
+            <Text style={styles.pointsInfo}>
+              {cart.usedPoints} points utilises sur {cart.availablePoints} disponibles
+            </Text>
 
             <Text style={styles.sectionTitle}>Livraison</Text>
 
@@ -468,6 +506,39 @@ const styles = StyleSheet.create({
     fontSize: 48 / 2,
     fontWeight: "900",
     color: brandColors.textDark,
+  },
+  pointsInfo: {
+    marginTop: 8,
+    marginBottom: 4,
+    fontSize: 13,
+    color: brandColors.textDark,
+    opacity: 0.8,
+  },
+  walletToggleRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  walletCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#3B3433",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  walletCheckboxChecked: {
+    backgroundColor: "#3F94BB",
+    borderColor: "#3F94BB",
+  },
+  walletToggleText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: brandColors.textDark,
+    flex: 1,
   },
   sectionTitle: {
     marginTop: 28,

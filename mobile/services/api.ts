@@ -136,9 +136,12 @@ export interface RewardCart {
   homeCity: string | null;
   relayPointName: string | null;
   relayAddress: string | null;
+  useWalletDiscount: boolean;
   items: RewardCartItem[];
   subtotal: number;
   deliveryFee: number;
+  availablePoints: number;
+  usedPoints: number;
   walletDiscount: number;
   total: number;
 }
@@ -756,6 +759,34 @@ class ApiService {
     }
   }
 
+  async getRewardById(rewardId: string): Promise<Reward> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/${rewardId}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la récupération de la récompense",
+        );
+      }
+
+      return await this.safeJsonParse<Reward>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetRewardById");
+      throw appError;
+    }
+  }
+
   async purchaseReward(token: string, rewardId: string): Promise<UserReward> {
     try {
       const response = await this.fetchWithTimeout(
@@ -962,6 +993,41 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, "UpdateRewardCartDelivery");
+      throw appError;
+    }
+  }
+
+  async updateRewardCartWalletDiscount(
+    token: string,
+    useWalletDiscount: boolean,
+  ): Promise<RewardCart> {
+    try {
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/cart/wallet-discount`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ useWalletDiscount }),
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la mise à jour de la cagnotte",
+        );
+      }
+
+      return await this.safeJsonParse<RewardCart>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "UpdateRewardCartWalletDiscount");
       throw appError;
     }
   }

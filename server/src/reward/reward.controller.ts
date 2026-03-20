@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -19,6 +20,7 @@ import { AddRewardCartItemDto } from './dto/add-reward-cart-item.dto';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { UpdateRewardCartDeliveryDto } from './dto/update-reward-cart-delivery.dto';
 import { UpdateRewardCartItemDto } from './dto/update-reward-cart-item.dto';
+import { UpdateRewardCartWalletDiscountDto } from './dto/update-reward-cart-wallet-discount.dto';
 import { Reward } from './reward.entity';
 import { RewardCartResponse, RewardService } from './reward.service';
 import { UserReward } from './user-reward.entity';
@@ -118,9 +120,28 @@ export class RewardController {
   }
 
   @UseGuards(AuthGuard)
+  @Patch('cart/wallet-discount')
+  updateCartWalletDiscount(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: UpdateRewardCartWalletDiscountDto,
+  ): Promise<RewardCartResponse> {
+    const userId = req.user.user.id;
+    return this.rewardService.updateCartWalletDiscount(userId, body);
+  }
+
+  @UseGuards(AuthGuard)
   @Post('cart/checkout')
   checkoutCart(@Req() req: AuthenticatedRequest): Promise<{ purchasedCount: number; total: number }> {
     const userId = req.user.user.id;
     return this.rewardService.checkoutCart(userId);
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') rewardId: string) {
+    const reward = await this.rewardService.findOne(rewardId);
+    if (!reward) {
+      throw new NotFoundException('Récompense non trouvée');
+    }
+    return reward;
   }
 }

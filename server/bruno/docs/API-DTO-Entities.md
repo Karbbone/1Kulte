@@ -39,6 +39,7 @@
 
 ### Rewards
 - `GET /rewards`
+- `GET /rewards/:id`
 - `POST /rewards` (JWT)
 - `PATCH /rewards/:id/image` (JWT, multipart field: `image`)
 - `POST /rewards/:id/purchase` (JWT)
@@ -48,7 +49,9 @@
 - `PATCH /rewards/cart/items/:itemId` (JWT)
 - `DELETE /rewards/cart/items/:itemId` (JWT)
 - `PATCH /rewards/cart/delivery` (JWT)
+- `PATCH /rewards/cart/wallet-discount` (JWT)
 - `POST /rewards/cart/checkout` (JWT)
+  - Regle cagnotte: reduction automatique basee sur les points user, avec plafond (politique backend).
 
 ### Trails
 - `GET /trails`
@@ -88,6 +91,7 @@
 - `AddRewardCartItemDto`: `rewardId`, `quantity?`
 - `UpdateRewardCartItemDto`: `quantity`
 - `UpdateRewardCartDeliveryDto`: `deliveryMode`, `homeRecipient?`, `homeAddressLine1?`, `homeAddressLine2?`, `homePostalCode?`, `homeCity?`, `relayPointName?`, `relayAddress?`, `relayOption?`
+- `UpdateRewardCartWalletDiscountDto`: `useWalletDiscount`
 
 ### Trail DTO
 - `CreateTrailDto`: `culturalPlaceId`, `name`, `description?`, `durationMinute?`, `difficulty?`, `isActive?`

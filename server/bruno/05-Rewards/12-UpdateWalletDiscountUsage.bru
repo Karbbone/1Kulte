@@ -1,0 +1,20 @@
+meta {
+  name: Update Wallet Discount Usage
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{host}}/rewards/cart/wallet-discount
+}
+
+headers {
+  content-type: application/json
+  Authorization: Bearer {{jwt}}
+}
+
+body {
+  {
+    useWalletDiscount: true
+  }
+}

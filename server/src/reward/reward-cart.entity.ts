@@ -60,6 +60,9 @@ export class RewardCart {
   })
   relayOption: RewardRelayOption;
 
+  @Column({ type: 'boolean', default: true })
+  useWalletDiscount: boolean;
+
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 

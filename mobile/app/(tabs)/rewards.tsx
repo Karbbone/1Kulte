@@ -191,7 +191,19 @@ export default function RewardsScreen() {
               const addingInProgress = adding === reward.id;
 
               return (
-                <View key={reward.id} style={styles.productCard}>
+                <Pressable
+                  key={reward.id}
+                  style={styles.productCard}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/reward/[id]",
+                      params: {
+                        id: reward.id,
+                        rewardData: JSON.stringify(reward),
+                      },
+                    })
+                  }
+                >
                   {reward.imageUrl ? (
                     <Image source={{ uri: reward.imageUrl }} style={styles.productImage} resizeMode="contain" />
                   ) : (
@@ -217,13 +229,16 @@ export default function RewardsScreen() {
                     <Text style={styles.productPrice}>{reward.cost}€</Text>
                     <Pressable
                       style={styles.addButton}
-                      onPress={() => handleAddToCart(reward)}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        handleAddToCart(reward);
+                      }}
                       disabled={addingInProgress}
                     >
                       <Ionicons name="add" size={18} color={brandColors.textDark} />
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>

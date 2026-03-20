@@ -9,6 +9,7 @@ import { AddRewardCartItemDto } from './dto/add-reward-cart-item.dto';
 import { CreateRewardDto } from './dto/create-reward.dto';
 import { UpdateRewardCartDeliveryDto } from './dto/update-reward-cart-delivery.dto';
 import { UpdateRewardCartItemDto } from './dto/update-reward-cart-item.dto';
+import { UpdateRewardCartWalletDiscountDto } from './dto/update-reward-cart-wallet-discount.dto';
 import { RewardCartItemRepository } from './reward-cart-item.repository';
 import { RewardCartRepository } from './reward-cart.repository';
 import { RewardDeliveryMode } from './reward-delivery-mode.enum';
@@ -40,9 +41,12 @@ export interface RewardCartResponse {
   homeCity: string | null;
   relayPointName: string | null;
   relayAddress: string | null;
+  useWalletDiscount: boolean;
   items: RewardCartItemResponse[];
   subtotal: number;
   deliveryFee: number;
+  availablePoints: number;
+  usedPoints: number;
   walletDiscount: number;
   total: number;
 }
@@ -50,6 +54,8 @@ export interface RewardCartResponse {
 @Injectable()
 export class RewardService {
   private static readonly PRIORITY_RELAY_FEE = 6;
+  private static readonly POINTS_PER_EURO = 40;
+  private static readonly MAX_DISCOUNT_RATE = 0.3;
 
   constructor(
     private readonly rewardRepository: RewardRepository,
@@ -130,7 +136,11 @@ export class RewardService {
 
   async getCart(userId: string): Promise<RewardCartResponse> {
     const cart = await this.getOrCreateCart(userId);
-    return this.toCartResponse(cart);
+    const user = await this.userRepository.findOne(userId);
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+    return this.toCartResponse(cart, user.points ?? 0);
   }
 
   async addToCart(
@@ -242,8 +252,22 @@ export class RewardService {
     return this.getCart(userId);
   }
 
+  async updateCartWalletDiscount(
+    userId: string,
+    dto: UpdateRewardCartWalletDiscountDto,
+  ): Promise<RewardCartResponse> {
+    const cart = await this.getOrCreateCart(userId);
+    cart.useWalletDiscount = dto.useWalletDiscount;
+    await this.rewardCartRepository.save(cart);
+    return this.getCart(userId);
+  }
+
   async checkoutCart(userId: string): Promise<{ purchasedCount: number; total: number }> {
     const cart = await this.getOrCreateCart(userId);
+    const user = await this.userRepository.findOne(userId);
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
 
     if (!cart.items || cart.items.length === 0) {
       throw new BadRequestException('Le panier est vide');
@@ -280,7 +304,12 @@ export class RewardService {
     await this.userRewardRepository.saveMany(purchasedRewards);
     await this.rewardCartItemRepository.deleteByCartId(cart.id);
 
-    const cartSummary = this.toCartResponse(cart);
+    const cartSummary = this.toCartResponse(cart, user.points ?? 0);
+
+    if (cartSummary.usedPoints > 0) {
+      user.points = Math.max((user.points ?? 0) - cartSummary.usedPoints, 0);
+      await this.userRepository.save(user);
+    }
 
     return {
       purchasedCount: purchasedRewards.length,
@@ -307,6 +336,7 @@ export class RewardService {
       newCart.homeCity = null;
       newCart.relayPointName = null;
       newCart.relayAddress = null;
+      newCart.useWalletDiscount = true;
       await this.rewardCartRepository.save(newCart);
       cart = await this.rewardCartRepository.findByUserIdWithItems(userId);
     }
@@ -329,8 +359,9 @@ export class RewardService {
     homeCity: string | null;
     relayPointName: string | null;
     relayAddress: string | null;
+    useWalletDiscount: boolean;
     items: Array<{ id: string; quantity: number; reward: Reward }>;
-  }): RewardCartResponse {
+  }, userPoints: number): RewardCartResponse {
     const items: RewardCartItemResponse[] = (cart.items || []).map((item) => {
       const rewardWithImage = this.addImageUrl(item.reward);
       const lineTotal = this.roundCurrency(item.quantity * rewardWithImage.cost);
@@ -347,7 +378,25 @@ export class RewardService {
       items.reduce((acc, item) => acc + item.lineTotal, 0),
     );
     const deliveryFee = this.getDeliveryFee(cart.deliveryMode, cart.relayOption);
-    const walletDiscount = 0;
+    let usedPoints = 0;
+    let walletDiscount = 0;
+
+    if (cart.useWalletDiscount) {
+      const maxDiscountByPoints = this.roundCurrency(
+        userPoints / RewardService.POINTS_PER_EURO,
+      );
+      const maxDiscountByPolicy = this.roundCurrency(
+        subtotal * RewardService.MAX_DISCOUNT_RATE,
+      );
+      const tentativeDiscount = Math.min(maxDiscountByPoints, maxDiscountByPolicy);
+      usedPoints = Math.min(
+        Math.floor(tentativeDiscount * RewardService.POINTS_PER_EURO),
+        userPoints,
+      );
+      walletDiscount = this.roundCurrency(
+        usedPoints / RewardService.POINTS_PER_EURO,
+      );
+    }
     const total = this.roundCurrency(subtotal + deliveryFee - walletDiscount);
 
     return {
@@ -361,9 +410,12 @@ export class RewardService {
       homeCity: cart.homeCity,
       relayPointName: cart.relayPointName,
       relayAddress: cart.relayAddress,
+      useWalletDiscount: cart.useWalletDiscount,
       items,
       subtotal,
       deliveryFee,
+      availablePoints: userPoints,
+      usedPoints,
       walletDiscount,
       total,
     };
