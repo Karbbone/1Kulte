@@ -155,7 +155,7 @@ export default function RewardsScreen() {
             const selected = selectedCategory === category.id;
             return (
               <Pressable
-                key={category.id}
+                key={`${category.id}-${selected ? "selected" : "idle"}`}
                 style={[
                   styles.categoryCard,
                   { backgroundColor: category.color },
@@ -289,21 +289,25 @@ const styles = StyleSheet.create({
     width: "48.5%",
     minHeight: 110,
     borderRadius: 16,
+    borderWidth: 3,
+    borderColor: "transparent",
     paddingHorizontal: 12,
     paddingVertical: 12,
+    paddingRight: 74,
     marginBottom: 12,
     overflow: "hidden",
     position: "relative",
   },
   categoryCardSelected: {
-    borderWidth: 3,
     borderColor: "#3B3433",
   },
   categoryLabel: {
     fontSize: 18,
     fontWeight: "800",
     color: "#000",
-    maxWidth: "62%",
+    lineHeight: 22,
+    flexShrink: 1,
+    zIndex: 2,
   },
   categoryPig: {
     position: "absolute",
@@ -311,6 +315,7 @@ const styles = StyleSheet.create({
     bottom: -8,
     width: 108,
     height: 90,
+    zIndex: 1,
   },
   popularHeader: {
     flexDirection: "row",
