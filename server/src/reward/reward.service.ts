@@ -51,11 +51,65 @@ export interface RewardCartResponse {
   total: number;
 }
 
+export interface RelayPointResponse {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+}
+
+interface RelayPointSeed {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
 @Injectable()
 export class RewardService {
   private static readonly PRIORITY_RELAY_FEE = 6;
   private static readonly POINTS_PER_EURO = 40;
   private static readonly MAX_DISCOUNT_RATE = 0.3;
+  private static readonly RELAY_POINTS: RelayPointSeed[] = [
+    {
+      id: 'relay-vannes-centre',
+      name: 'Mondial Relay Vannes Centre',
+      address: '14 Rue Thiers, 56000 Vannes',
+      latitude: 47.6582,
+      longitude: -2.7617,
+    },
+    {
+      id: 'relay-vannes-gare',
+      name: 'Relais Gare de Vannes',
+      address: '3 Place de la Gare, 56000 Vannes',
+      latitude: 47.6644,
+      longitude: -2.7522,
+    },
+    {
+      id: 'relay-plescop-bourg',
+      name: 'Point Relais Plescop Bourg',
+      address: '7 Place Marianne, 56890 Plescop',
+      latitude: 47.6999,
+      longitude: -2.8013,
+    },
+    {
+      id: 'relay-arradon',
+      name: 'Relais Arradon Port',
+      address: '9 Rue de l Église, 56610 Arradon',
+      latitude: 47.6235,
+      longitude: -2.8215,
+    },
+    {
+      id: 'relay-auray-centre',
+      name: 'Point Relais Auray Centre',
+      address: '28 Rue du Belzic, 56400 Auray',
+      latitude: 47.6676,
+      longitude: -2.9872,
+    },
+  ];
 
   constructor(
     private readonly rewardRepository: RewardRepository,
@@ -262,6 +316,27 @@ export class RewardService {
     return this.getCart(userId);
   }
 
+  getNearbyRelayPoints(
+    latitude: number,
+    longitude: number,
+  ): RelayPointResponse[] {
+    return RewardService.RELAY_POINTS
+      .map((relayPoint) => {
+        const distanceKm = this.calculateDistanceKm(
+          latitude,
+          longitude,
+          relayPoint.latitude,
+          relayPoint.longitude,
+        );
+        return {
+          ...relayPoint,
+          distanceKm: Number(distanceKm.toFixed(1)),
+        };
+      })
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, 5);
+  }
+
   async checkoutCart(userId: string): Promise<{ purchasedCount: number; total: number }> {
     const cart = await this.getOrCreateCart(userId);
     const user = await this.userRepository.findOne(userId);
@@ -346,6 +421,31 @@ export class RewardService {
     }
 
     return cart;
+  }
+
+  private calculateDistanceKm(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const earthRadiusKm = 6371;
+    const dLat = this.degToRad(lat2 - lat1);
+    const dLon = this.degToRad(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.degToRad(lat1)) *
+        Math.cos(this.degToRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
+  }
+
+  private degToRad(degrees: number): number {
+    return degrees * (Math.PI / 180);
   }
 
   private toCartResponse(cart: {

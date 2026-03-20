@@ -146,6 +146,15 @@ export interface RewardCart {
   total: number;
 }
 
+export interface RelayPointSuggestion {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+}
+
 export interface UserReward {
   id: string;
   reward: Reward;
@@ -993,6 +1002,46 @@ class ApiService {
       }
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError, "UpdateRewardCartDelivery");
+      throw appError;
+    }
+  }
+
+  async getNearbyRelayPoints(
+    token: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<RelayPointSuggestion[]> {
+    try {
+      const params = new URLSearchParams({
+        latitude: String(latitude),
+        longitude: String(longitude),
+      });
+
+      const response = await this.fetchWithTimeout(
+        `${this.baseUrl}/rewards/relay-points/nearby?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        await this.handleErrorResponse(
+          response,
+          "Erreur lors de la recherche des points relais",
+        );
+      }
+
+      return await this.safeJsonParse<RelayPointSuggestion[]>(response);
+    } catch (error) {
+      if (ErrorHandler.isAppError(error)) {
+        throw error;
+      }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError, "GetNearbyRelayPoints");
       throw appError;
     }
   }

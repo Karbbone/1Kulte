@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -18,6 +19,7 @@ import { AuthGuard } from '../user/auth.guard';
 import { User } from '../user/user.entity';
 import { AddRewardCartItemDto } from './dto/add-reward-cart-item.dto';
 import { CreateRewardDto } from './dto/create-reward.dto';
+import { GetNearbyRelayPointsDto } from './dto/get-nearby-relay-points.dto';
 import { UpdateRewardCartDeliveryDto } from './dto/update-reward-cart-delivery.dto';
 import { UpdateRewardCartItemDto } from './dto/update-reward-cart-item.dto';
 import { UpdateRewardCartWalletDiscountDto } from './dto/update-reward-cart-wallet-discount.dto';
@@ -76,6 +78,15 @@ export class RewardController {
   getCart(@Req() req: AuthenticatedRequest): Promise<RewardCartResponse> {
     const userId = req.user.user.id;
     return this.rewardService.getCart(userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('relay-points/nearby')
+  getNearbyRelayPoints(@Query() query: GetNearbyRelayPointsDto) {
+    return this.rewardService.getNearbyRelayPoints(
+      query.latitude,
+      query.longitude,
+    );
   }
 
   @UseGuards(AuthGuard)

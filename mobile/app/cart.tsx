@@ -1,13 +1,15 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,8 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   api,
+  RelayPointSuggestion,
   RewardCart,
-  RewardDeliveryMode,
   RewardRelayOption,
 } from "@/services/api";
 import { storage } from "@/services/storage";
@@ -25,14 +27,29 @@ import { brandColors } from "@/constants/Colors";
 const HOME_DEFAULT = {
   homeRecipient: "My Digital School",
   homeAddressLine1: "3 Rue Marie Curie",
+  homeAddressLine2: "",
   homePostalCode: "56000",
   homeCity: "Plescop",
 };
 
-const RELAY_DEFAULT = {
-  relayPointName: "Point Relais Kulte",
-  relayAddress: "12 Rue du Centre, 56000 Vannes",
+const RELAY_FALLBACK_LAT = 47.6582;
+const RELAY_FALLBACK_LNG = -2.7608;
+
+type HomeForm = {
+  homeRecipient: string;
+  homeAddressLine1: string;
+  homeAddressLine2: string;
+  homePostalCode: string;
+  homeCity: string;
 };
+
+const getHomeFormFromCart = (cart: RewardCart | null): HomeForm => ({
+  homeRecipient: cart?.homeRecipient || HOME_DEFAULT.homeRecipient,
+  homeAddressLine1: cart?.homeAddressLine1 || HOME_DEFAULT.homeAddressLine1,
+  homeAddressLine2: cart?.homeAddressLine2 || HOME_DEFAULT.homeAddressLine2,
+  homePostalCode: cart?.homePostalCode || HOME_DEFAULT.homePostalCode,
+  homeCity: cart?.homeCity || HOME_DEFAULT.homeCity,
+});
 
 export default function CartScreen() {
   const router = useRouter();
@@ -40,14 +57,31 @@ export default function CartScreen() {
   const [cart, setCart] = useState<RewardCart | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
-  const [submittingDelivery, setSubmittingDelivery] = useState(false);
   const [submittingWallet, setSubmittingWallet] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const [homeModalVisible, setHomeModalVisible] = useState(false);
+  const [relayModalVisible, setRelayModalVisible] = useState(false);
+  const [savingDelivery, setSavingDelivery] = useState(false);
+
+  const [homeForm, setHomeForm] = useState<HomeForm>(getHomeFormFromCart(null));
+  const [relayOptionDraft, setRelayOptionDraft] =
+    useState<RewardRelayOption>("standard");
+  const [relayPoints, setRelayPoints] = useState<RelayPointSuggestion[]>([]);
+  const [selectedRelayPointId, setSelectedRelayPointId] = useState<string | null>(
+    null,
+  );
+  const [loadingRelayPoints, setLoadingRelayPoints] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       loadCart();
     }, []),
+  );
+
+  const selectedRelayPoint = useMemo(
+    () => relayPoints.find((item) => item.id === selectedRelayPointId) || null,
+    [relayPoints, selectedRelayPointId],
   );
 
   const loadCart = async () => {
@@ -63,6 +97,8 @@ export default function CartScreen() {
 
       const cartData = await api.getRewardCart(userToken);
       setCart(cartData);
+      setHomeForm(getHomeFormFromCart(cartData));
+      setRelayOptionDraft(cartData.relayOption || "standard");
     } catch (error: any) {
       Alert.alert("Erreur", error?.message || "Impossible de charger le panier.");
     } finally {
@@ -89,37 +125,122 @@ export default function CartScreen() {
     }
   };
 
-  const updateDeliveryMode = async (
-    deliveryMode: RewardDeliveryMode,
-    relayOption: RewardRelayOption = "standard",
-  ) => {
+  const openHomeModal = () => {
+    setHomeForm(getHomeFormFromCart(cart));
+    setHomeModalVisible(true);
+  };
+
+  const saveHomeDelivery = async () => {
+    if (!token) return;
+
+    if (!homeForm.homeAddressLine1.trim() || !homeForm.homePostalCode.trim() || !homeForm.homeCity.trim()) {
+      Alert.alert("Adresse incomplete", "Renseigne au minimum adresse, code postal et ville.");
+      return;
+    }
+
+    try {
+      setSavingDelivery(true);
+      const nextCart = await api.updateRewardCartDelivery(token, {
+        deliveryMode: "home",
+        homeRecipient: homeForm.homeRecipient.trim(),
+        homeAddressLine1: homeForm.homeAddressLine1.trim(),
+        homeAddressLine2: homeForm.homeAddressLine2.trim(),
+        homePostalCode: homeForm.homePostalCode.trim(),
+        homeCity: homeForm.homeCity.trim(),
+      });
+      setCart(nextCart);
+      setHomeModalVisible(false);
+    } catch (error: any) {
+      Alert.alert("Erreur", error?.message || "Impossible d'enregistrer l'adresse.");
+    } finally {
+      setSavingDelivery(false);
+    }
+  };
+
+  const getCurrentPosition = (): Promise<{ latitude: number; longitude: number }> => {
+    return new Promise((resolve, reject) => {
+      const geolocation = globalThis.navigator?.geolocation;
+      if (!geolocation) {
+        reject(new Error("Geolocalisation indisponible"));
+        return;
+      }
+
+      geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          reject(error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 30000,
+        },
+      );
+    });
+  };
+
+  const loadNearbyRelayPoints = async () => {
     if (!token) return;
 
     try {
-      setSubmittingDelivery(true);
+      setLoadingRelayPoints(true);
 
-      const payload =
-        deliveryMode === "home"
-          ? {
-              deliveryMode,
-              homeRecipient: cart?.homeRecipient || HOME_DEFAULT.homeRecipient,
-              homeAddressLine1: cart?.homeAddressLine1 || HOME_DEFAULT.homeAddressLine1,
-              homePostalCode: cart?.homePostalCode || HOME_DEFAULT.homePostalCode,
-              homeCity: cart?.homeCity || HOME_DEFAULT.homeCity,
-            }
-          : {
-              deliveryMode,
-              relayPointName: cart?.relayPointName || RELAY_DEFAULT.relayPointName,
-              relayAddress: cart?.relayAddress || RELAY_DEFAULT.relayAddress,
-              relayOption,
-            };
+      let latitude = RELAY_FALLBACK_LAT;
+      let longitude = RELAY_FALLBACK_LNG;
 
-      const nextCart = await api.updateRewardCartDelivery(token, payload);
-      setCart(nextCart);
+      try {
+        const position = await getCurrentPosition();
+        latitude = position.latitude;
+        longitude = position.longitude;
+      } catch {
+        Alert.alert(
+          "Position non disponible",
+          "On te propose les points relais proches de Vannes par defaut.",
+        );
+      }
+
+      const nearby = await api.getNearbyRelayPoints(token, latitude, longitude);
+      setRelayPoints(nearby);
+      setSelectedRelayPointId((prev) => prev || nearby[0]?.id || null);
     } catch (error: any) {
-      Alert.alert("Erreur", error?.message || "Impossible de modifier la livraison.");
+      Alert.alert("Erreur", error?.message || "Impossible de charger les points relais.");
     } finally {
-      setSubmittingDelivery(false);
+      setLoadingRelayPoints(false);
+    }
+  };
+
+  const openRelayModal = async () => {
+    setRelayModalVisible(true);
+    setRelayOptionDraft(cart?.relayOption || "standard");
+    setSelectedRelayPointId(null);
+    await loadNearbyRelayPoints();
+  };
+
+  const saveRelayDelivery = async () => {
+    if (!token || !selectedRelayPoint) {
+      Alert.alert("Point relais", "Choisis un point relais avant de valider.");
+      return;
+    }
+
+    try {
+      setSavingDelivery(true);
+      const nextCart = await api.updateRewardCartDelivery(token, {
+        deliveryMode: "relay",
+        relayPointName: selectedRelayPoint.name,
+        relayAddress: selectedRelayPoint.address,
+        relayOption: relayOptionDraft,
+      });
+      setCart(nextCart);
+      setRelayModalVisible(false);
+    } catch (error: any) {
+      Alert.alert("Erreur", error?.message || "Impossible d'enregistrer le point relais.");
+    } finally {
+      setSavingDelivery(false);
     }
   };
 
@@ -175,7 +296,7 @@ export default function CartScreen() {
         <StatusBar barStyle="dark-content" />
         <View style={styles.centered}>
           <Text style={styles.emptyText}>Connectez-vous pour acceder au panier.</Text>
-          <Pressable style={styles.primaryButton} onPress={() => router.push("/login")}> 
+          <Pressable style={styles.primaryButton} onPress={() => router.push("/login")}>
             <Text style={styles.primaryButtonText}>Se connecter</Text>
           </Pressable>
         </View>
@@ -204,7 +325,7 @@ export default function CartScreen() {
           <View style={styles.emptyWrap}>
             <Ionicons name="bag-handle-outline" size={52} color={brandColors.textDark} style={{ opacity: 0.35 }} />
             <Text style={styles.emptyText}>Ton panier est vide.</Text>
-            <Pressable style={styles.primaryButton} onPress={() => router.push("/(tabs)/rewards")}> 
+            <Pressable style={styles.primaryButton} onPress={() => router.push("/(tabs)/rewards")}>
               <Text style={styles.primaryButtonText}>Retour boutique</Text>
             </Pressable>
           </View>
@@ -266,6 +387,7 @@ export default function CartScreen() {
                 <Text style={styles.summaryTotalValue}>{cart.total}€</Text>
               </View>
             </View>
+
             <Pressable
               style={styles.walletToggleRow}
               onPress={toggleWalletDiscount}
@@ -294,14 +416,14 @@ export default function CartScreen() {
                 </View>
                 <Pressable
                   style={styles.secondaryButton}
-                  onPress={() => updateDeliveryMode("home")}
-                  disabled={submittingDelivery}
+                  onPress={openHomeModal}
                 >
-                  <Text style={styles.secondaryButtonText}>Modifier</Text>
+                  <Text style={styles.secondaryButtonText}>Adresse</Text>
                 </Pressable>
               </View>
               <Text style={styles.addressLine}>{cart.homeRecipient || HOME_DEFAULT.homeRecipient}</Text>
               <Text style={styles.addressLine}>{cart.homeAddressLine1 || HOME_DEFAULT.homeAddressLine1}</Text>
+              {!!cart.homeAddressLine2 && <Text style={styles.addressLine}>{cart.homeAddressLine2}</Text>}
               <Text style={styles.addressLine}>{`${cart.homePostalCode || HOME_DEFAULT.homePostalCode}, ${cart.homeCity || HOME_DEFAULT.homeCity}`}</Text>
             </View>
 
@@ -320,32 +442,17 @@ export default function CartScreen() {
                 </View>
                 <Pressable
                   style={styles.secondaryButton}
-                  onPress={() => updateDeliveryMode("relay", cart.relayOption)}
-                  disabled={submittingDelivery}
+                  onPress={openRelayModal}
                 >
                   <Text style={styles.secondaryButtonText}>Choisir</Text>
                 </Pressable>
               </View>
 
-              <Text style={styles.addressLine}>{cart.relayPointName || RELAY_DEFAULT.relayPointName}</Text>
-              <Text style={styles.addressLine}>{cart.relayAddress || RELAY_DEFAULT.relayAddress}</Text>
-
-              <View style={styles.relayOptions}>
-                <Pressable
-                  style={styles.optionRow}
-                  onPress={() => updateDeliveryMode("relay", "standard")}
-                >
-                  <View style={[styles.dotSmall, cart.relayOption === "standard" && styles.dotSmallFilled]} />
-                  <Text style={styles.optionText}>0€ Standard - 4/5 jours ouvres</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.optionRow}
-                  onPress={() => updateDeliveryMode("relay", "priority")}
-                >
-                  <View style={[styles.dotSmall, cart.relayOption === "priority" && styles.dotSmallFilled]} />
-                  <Text style={styles.optionText}>6€ Prioritaire - 2 jours ouvres</Text>
-                </Pressable>
-              </View>
+              <Text style={styles.addressLine}>{cart.relayPointName || "Aucun point relais selectionne"}</Text>
+              <Text style={styles.addressLine}>{cart.relayAddress || "Selectionne un relais proche"}</Text>
+              <Text style={styles.optionInfoText}>
+                Option: {cart.relayOption === "priority" ? "Prioritaire (2 jours)" : "Standard (4/5 jours)"}
+              </Text>
             </View>
 
             <Pressable
@@ -362,6 +469,164 @@ export default function CartScreen() {
           </>
         )}
       </ScrollView>
+
+      <Modal
+        visible={homeModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHomeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Adresse domicile</Text>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <TextInput
+                value={homeForm.homeRecipient}
+                onChangeText={(value) => setHomeForm((prev) => ({ ...prev, homeRecipient: value }))}
+                style={styles.input}
+                placeholder="Destinataire"
+                placeholderTextColor="#6B6661"
+              />
+              <TextInput
+                value={homeForm.homeAddressLine1}
+                onChangeText={(value) => setHomeForm((prev) => ({ ...prev, homeAddressLine1: value }))}
+                style={styles.input}
+                placeholder="Adresse ligne 1 *"
+                placeholderTextColor="#6B6661"
+              />
+              <TextInput
+                value={homeForm.homeAddressLine2}
+                onChangeText={(value) => setHomeForm((prev) => ({ ...prev, homeAddressLine2: value }))}
+                style={styles.input}
+                placeholder="Adresse ligne 2"
+                placeholderTextColor="#6B6661"
+              />
+              <TextInput
+                value={homeForm.homePostalCode}
+                onChangeText={(value) => setHomeForm((prev) => ({ ...prev, homePostalCode: value }))}
+                style={styles.input}
+                placeholder="Code postal *"
+                placeholderTextColor="#6B6661"
+                keyboardType="number-pad"
+              />
+              <TextInput
+                value={homeForm.homeCity}
+                onChangeText={(value) => setHomeForm((prev) => ({ ...prev, homeCity: value }))}
+                style={styles.input}
+                placeholder="Ville *"
+                placeholderTextColor="#6B6661"
+              />
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.secondaryButton, styles.modalActionButton]}
+                onPress={() => setHomeModalVisible(false)}
+              >
+                <Text style={styles.secondaryButtonText}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.primaryButton, styles.modalActionButton, savingDelivery && { opacity: 0.6 }]}
+                onPress={saveHomeDelivery}
+                disabled={savingDelivery}
+              >
+                {savingDelivery ? (
+                  <ActivityIndicator size="small" color={brandColors.textDark} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Enregistrer</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={relayModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setRelayModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Point relais proche</Text>
+
+            <Pressable
+              style={[styles.secondaryButton, styles.modalLocateButton]}
+              onPress={loadNearbyRelayPoints}
+              disabled={loadingRelayPoints}
+            >
+              {loadingRelayPoints ? (
+                <ActivityIndicator size="small" color={brandColors.textDark} />
+              ) : (
+                <Text style={styles.secondaryButtonText}>Actualiser autour de moi</Text>
+              )}
+            </Pressable>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {relayPoints.length === 0 ? (
+                <Text style={styles.modalEmptyText}>Aucun point relais trouve.</Text>
+              ) : (
+                relayPoints.map((relayPoint) => {
+                  const selected = relayPoint.id === selectedRelayPointId;
+                  return (
+                    <Pressable
+                      key={relayPoint.id}
+                      style={[styles.relayPointItem, selected && styles.relayPointItemSelected]}
+                      onPress={() => setSelectedRelayPointId(relayPoint.id)}
+                    >
+                      <View style={[styles.dotSmall, selected && styles.dotSmallFilled]} />
+                      <View style={styles.relayPointContent}>
+                        <Text style={styles.relayPointName}>{relayPoint.name}</Text>
+                        <Text style={styles.relayPointAddress}>{relayPoint.address}</Text>
+                      </View>
+                      <Text style={styles.relayDistance}>{relayPoint.distanceKm} km</Text>
+                    </Pressable>
+                  );
+                })
+              )}
+
+              <Text style={styles.modalSubTitle}>Option de livraison</Text>
+
+              <Pressable
+                style={styles.optionRow}
+                onPress={() => setRelayOptionDraft("standard")}
+              >
+                <View style={[styles.dotSmall, relayOptionDraft === "standard" && styles.dotSmallFilled]} />
+                <Text style={styles.optionText}>0€ Standard - 4/5 jours ouvres</Text>
+              </Pressable>
+              <Pressable
+                style={styles.optionRow}
+                onPress={() => setRelayOptionDraft("priority")}
+              >
+                <View style={[styles.dotSmall, relayOptionDraft === "priority" && styles.dotSmallFilled]} />
+                <Text style={styles.optionText}>6€ Prioritaire - 2 jours ouvres</Text>
+              </Pressable>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.secondaryButton, styles.modalActionButton]}
+                onPress={() => setRelayModalVisible(false)}
+              >
+                <Text style={styles.secondaryButtonText}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.primaryButton, styles.modalActionButton, savingDelivery && { opacity: 0.6 }]}
+                onPress={saveRelayDelivery}
+                disabled={savingDelivery}
+              >
+                {savingDelivery ? (
+                  <ActivityIndicator size="small" color={brandColors.textDark} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Valider</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -586,6 +851,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     marginLeft: 21,
   },
+  optionInfoText: {
+    color: brandColors.textDark,
+    opacity: 0.9,
+    fontSize: 12,
+    marginTop: 6,
+    marginLeft: 21,
+  },
   orRow: {
     marginVertical: 14,
     flexDirection: "row",
@@ -602,15 +874,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: brandColors.textDark,
   },
-  relayOptions: {
-    marginTop: 8,
-    marginLeft: 21,
-    gap: 6,
-  },
   optionRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginTop: 6,
   },
   dotSmall: {
     width: 12,
@@ -672,5 +940,97 @@ const styles = StyleSheet.create({
     color: brandColors.textDark,
     opacity: 0.75,
     textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(26, 22, 20, 0.45)",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  modalCard: {
+    borderRadius: 16,
+    backgroundColor: "#FFF8EF",
+    maxHeight: "82%",
+    padding: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: brandColors.textDark,
+    marginBottom: 12,
+  },
+  modalSubTitle: {
+    marginTop: 14,
+    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: "700",
+    color: brandColors.textDark,
+  },
+  modalBody: {
+    maxHeight: 360,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 14,
+  },
+  modalActionButton: {
+    minWidth: 108,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalLocateButton: {
+    alignSelf: "flex-start",
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#D3C8BB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: brandColors.textDark,
+    marginBottom: 8,
+    backgroundColor: "#FFF",
+  },
+  modalEmptyText: {
+    color: brandColors.textDark,
+    opacity: 0.75,
+    marginBottom: 8,
+  },
+  relayPointItem: {
+    borderWidth: 1,
+    borderColor: "#D3C8BB",
+    borderRadius: 12,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+    backgroundColor: "#FFF",
+  },
+  relayPointItemSelected: {
+    borderColor: "#F26A13",
+    backgroundColor: "#FFF3E3",
+  },
+  relayPointContent: {
+    flex: 1,
+  },
+  relayPointName: {
+    color: brandColors.textDark,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  relayPointAddress: {
+    color: brandColors.textDark,
+    opacity: 0.8,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  relayDistance: {
+    color: brandColors.textDark,
+    fontWeight: "700",
+    fontSize: 12,
   },
 });
