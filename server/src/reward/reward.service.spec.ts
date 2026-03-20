@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { RewardService } from './reward.service';
 import { RewardRepository } from './reward.repository';
 import { UserRewardRepository } from './user-reward.repository';
@@ -10,6 +10,8 @@ import { UserReward } from './user-reward.entity';
 import { User } from '../user/user.entity';
 import { RewardCartRepository } from './reward-cart.repository';
 import { RewardCartItemRepository } from './reward-cart-item.repository';
+import { RewardDeliveryMode } from './reward-delivery-mode.enum';
+import { RewardRelayOption } from './reward-relay-option.enum';
 
 describe('RewardService', () => {
   let service: RewardService;
@@ -17,6 +19,8 @@ describe('RewardService', () => {
   let userRewardRepository: jest.Mocked<UserRewardRepository>;
   let userRepository: jest.Mocked<UserRepository>;
   let minioService: jest.Mocked<MinioService>;
+  let rewardCartRepository: jest.Mocked<RewardCartRepository>;
+  let rewardCartItemRepository: jest.Mocked<RewardCartItemRepository>;
 
   const mockReward: Reward = {
     id: 'reward-1',
@@ -75,6 +79,7 @@ describe('RewardService', () => {
             findByUserId: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
+            saveMany: jest.fn(),
           },
         },
         {
@@ -119,6 +124,8 @@ describe('RewardService', () => {
     userRewardRepository = module.get(UserRewardRepository);
     userRepository = module.get(UserRepository);
     minioService = module.get(MinioService);
+    rewardCartRepository = module.get(RewardCartRepository);
+    rewardCartItemRepository = module.get(RewardCartItemRepository);
   });
 
   describe('findAll', () => {
@@ -372,6 +379,176 @@ describe('RewardService', () => {
       const result = await service.findUserRewards('user-1');
 
       expect((result[0].reward as any).imageUrl).toBeNull();
+    });
+  });
+
+  describe('getNearbyRelayPoints', () => {
+    it('should return relay points sorted by distance (ascending)', () => {
+      const result = service.getNearbyRelayPoints(47.6582, -2.7617);
+
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].id).toBe('relay-vannes-centre');
+
+      for (let i = 1; i < result.length; i += 1) {
+        expect(result[i].distanceKm).toBeGreaterThanOrEqual(
+          result[i - 1].distanceKm,
+        );
+      }
+    });
+
+    it('should limit relay suggestions to 5 points with rounded distance', () => {
+      const result = service.getNearbyRelayPoints(47.7, -2.8);
+
+      expect(result).toHaveLength(5);
+      result.forEach((relayPoint) => {
+        expect(typeof relayPoint.distanceKm).toBe('number');
+        expect(relayPoint.distanceKm).toEqual(
+          Number(relayPoint.distanceKm.toFixed(1)),
+        );
+      });
+    });
+  });
+
+  describe('cart workflows', () => {
+    const baseCart = {
+      id: 'cart-1',
+      deliveryMode: RewardDeliveryMode.HOME,
+      relayOption: RewardRelayOption.STANDARD,
+      homeRecipient: null,
+      homeAddressLine1: null,
+      homeAddressLine2: null,
+      homePostalCode: null,
+      homeCity: null,
+      relayPointName: null,
+      relayAddress: null,
+      useWalletDiscount: true,
+      items: [],
+    };
+
+    it('should reject addToCart when quantity would exceed 20', async () => {
+      rewardRepository.findOne.mockResolvedValue(mockReward);
+      userRepository.findOne.mockResolvedValue(mockUser);
+      rewardCartRepository.findByUserIdWithItems.mockResolvedValue({
+        ...baseCart,
+      } as any);
+      rewardCartItemRepository.findByCartAndReward.mockResolvedValue({
+        id: 'item-1',
+        quantity: 20,
+      } as any);
+
+      await expect(
+        service.addToCart('user-1', { rewardId: 'reward-1', quantity: 1 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should update home delivery and persist cart', async () => {
+      const cart = { ...baseCart };
+      const expected = { id: 'cart-1' } as any;
+      jest.spyOn(service, 'getCart').mockResolvedValue(expected);
+
+      userRepository.findOne.mockResolvedValue(mockUser);
+      rewardCartRepository.findByUserIdWithItems.mockResolvedValue(cart as any);
+      rewardCartRepository.save.mockResolvedValue(cart as any);
+
+      const result = await service.updateCartDelivery('user-1', {
+        deliveryMode: RewardDeliveryMode.HOME,
+        homeRecipient: 'Alice',
+        homeAddressLine1: '10 rue des Fleurs',
+        homePostalCode: '75001',
+        homeCity: 'Paris',
+      });
+
+      expect(rewardCartRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deliveryMode: RewardDeliveryMode.HOME,
+          homeRecipient: 'Alice',
+          homeAddressLine1: '10 rue des Fleurs',
+          homePostalCode: '75001',
+          homeCity: 'Paris',
+        }),
+      );
+      expect(result).toEqual(expected);
+    });
+
+    it('should reject home delivery when address is incomplete', async () => {
+      userRepository.findOne.mockResolvedValue(mockUser);
+      rewardCartRepository.findByUserIdWithItems.mockResolvedValue({
+        ...baseCart,
+      } as any);
+
+      await expect(
+        service.updateCartDelivery('user-1', {
+          deliveryMode: RewardDeliveryMode.HOME,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should default relay option to standard when omitted', async () => {
+      const cart = {
+        ...baseCart,
+        deliveryMode: RewardDeliveryMode.RELAY,
+        relayOption: null,
+      } as any;
+      const expected = { id: 'cart-1' } as any;
+      jest.spyOn(service, 'getCart').mockResolvedValue(expected);
+
+      userRepository.findOne.mockResolvedValue(mockUser);
+      rewardCartRepository.findByUserIdWithItems.mockResolvedValue(cart);
+      rewardCartRepository.save.mockResolvedValue(cart);
+
+      await service.updateCartDelivery('user-1', {
+        deliveryMode: RewardDeliveryMode.RELAY,
+        relayPointName: 'Relay Test',
+        relayAddress: '1 Place Test',
+      });
+
+      expect(rewardCartRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deliveryMode: RewardDeliveryMode.RELAY,
+          relayOption: RewardRelayOption.STANDARD,
+          relayPointName: 'Relay Test',
+          relayAddress: '1 Place Test',
+        }),
+      );
+    });
+
+    it('should reject checkout when cart is empty', async () => {
+      userRepository.findOne.mockResolvedValue(mockUser);
+      rewardCartRepository.findByUserIdWithItems.mockResolvedValue({
+        ...baseCart,
+        items: [],
+      } as any);
+
+      await expect(service.checkoutCart('user-1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should checkout relay cart and clear cart items', async () => {
+      const cart = {
+        ...baseCart,
+        deliveryMode: RewardDeliveryMode.RELAY,
+        relayPointName: 'Relay A',
+        relayAddress: '10 Rue A',
+        items: [
+          {
+            id: 'item-1',
+            quantity: 2,
+            reward: { ...mockReward, cost: 10 },
+          },
+        ],
+      } as any;
+      userRepository.findOne.mockResolvedValue({ ...mockUser, points: 0 });
+      rewardCartRepository.findByUserIdWithItems.mockResolvedValue(cart);
+      userRewardRepository.create.mockImplementation((data: any) => data as any);
+      userRewardRepository.saveMany.mockResolvedValue([] as any);
+      rewardCartItemRepository.deleteByCartId.mockResolvedValue(undefined);
+
+      const result = await service.checkoutCart('user-1');
+
+      expect(userRewardRepository.create).toHaveBeenCalledTimes(2);
+      expect(rewardCartItemRepository.deleteByCartId).toHaveBeenCalledWith('cart-1');
+      expect(result.purchasedCount).toBe(2);
     });
   });
 });
