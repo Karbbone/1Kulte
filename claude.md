@@ -36,3 +36,5 @@ avec:
 5. Variables d'URL (`:id`, etc.) = placeholders Bruno alignes.
 6. `API-DTO-Entities.md` mis a jour.
 7. `git status` montre les fichiers Bruno impactes avec les modifs API.
+8. Lancer les tests backend avant de terminer (`cd server && npm test`).
+9. Lancer les tests e2e backend avant de terminer (`cd server && npm run test:e2e`).

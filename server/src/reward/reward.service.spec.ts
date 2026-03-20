@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { RewardService } from './reward.service';
 import { RewardRepository } from './reward.repository';
 import { UserRewardRepository } from './user-reward.repository';
@@ -8,6 +8,8 @@ import { MinioService } from '../shares/minio/minio.service';
 import { Reward } from './reward.entity';
 import { UserReward } from './user-reward.entity';
 import { User } from '../user/user.entity';
+import { RewardCartRepository } from './reward-cart.repository';
+import { RewardCartItemRepository } from './reward-cart-item.repository';
 
 describe('RewardService', () => {
   let service: RewardService;
@@ -32,7 +34,7 @@ describe('RewardService', () => {
     title: 'No Image Reward',
     description: 'A reward without image',
     cost: 50,
-    image: null,
+    image: '',
     userRewards: [],
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -88,6 +90,25 @@ describe('RewardService', () => {
             uploadFile: jest.fn(),
             deleteFile: jest.fn(),
             getFileUrl: jest.fn(),
+          },
+        },
+        {
+          provide: RewardCartRepository,
+          useValue: {
+            findByUserIdWithItems: jest.fn(),
+            createForUser: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: RewardCartItemRepository,
+          useValue: {
+            findByCartAndReward: jest.fn(),
+            findByIdForUser: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+            deleteByCartId: jest.fn(),
           },
         },
       ],
@@ -244,7 +265,7 @@ describe('RewardService', () => {
   });
 
   describe('purchase', () => {
-    it('should deduct points and create a UserReward', async () => {
+    it('should create a UserReward without mutating user points', async () => {
       const user = { ...mockUser, points: 200 };
       userRepository.findOne.mockResolvedValue(user);
       rewardRepository.findOne.mockResolvedValue(mockReward);
@@ -254,8 +275,8 @@ describe('RewardService', () => {
 
       const result = await service.purchase('user-1', 'reward-1');
 
-      expect(user.points).toBe(100);
-      expect(userRepository.save).toHaveBeenCalledWith(user);
+      expect(user.points).toBe(200);
+      expect(userRepository.save).not.toHaveBeenCalled();
       expect(userRewardRepository.create).toHaveBeenCalledWith({
         userId: 'user-1',
         rewardId: 'reward-1',
@@ -280,17 +301,22 @@ describe('RewardService', () => {
       );
     });
 
-    it('should throw BadRequestException if insufficient points', async () => {
-      const poorUser = { ...mockUser, points: 10 };
+    it('should allow purchase regardless of current points balance', async () => {
+      const poorUser = { ...mockUser, points: 0 };
+      const userReward = { id: 'ur-low-points' } as unknown as UserReward;
+
       userRepository.findOne.mockResolvedValue(poorUser);
       rewardRepository.findOne.mockResolvedValue(mockReward);
+      userRewardRepository.create.mockReturnValue(userReward);
+      userRewardRepository.save.mockResolvedValue(userReward);
 
-      await expect(service.purchase('user-1', 'reward-1')).rejects.toThrow(
-        BadRequestException,
-      );
+      const result = await service.purchase('user-1', 'reward-1');
+
+      expect(result).toEqual(userReward);
+      expect(userRepository.save).not.toHaveBeenCalled();
     });
 
-    it('should succeed when points exactly equal cost', async () => {
+    it('should still succeed when points exactly equal cost', async () => {
       const exactUser = { ...mockUser, points: 100 };
       userRepository.findOne.mockResolvedValue(exactUser);
       rewardRepository.findOne.mockResolvedValue(mockReward);
@@ -300,8 +326,8 @@ describe('RewardService', () => {
 
       await service.purchase('user-1', 'reward-1');
 
-      expect(exactUser.points).toBe(0);
-      expect(userRepository.save).toHaveBeenCalledWith(exactUser);
+      expect(exactUser.points).toBe(100);
+      expect(userRepository.save).not.toHaveBeenCalled();
     });
   });
 

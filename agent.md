@@ -11,6 +11,8 @@ Quand tu modifies l'API (`server/src`), tu dois aussi modifier Bruno (`server/br
 5. Verifier que le login continue de stocker le JWT.
 6. Mettre a jour `server/bruno/docs/API-DTO-Entities.md`.
 7. Faire un controle final avec `git diff`.
+8. Executer les tests unitaires backend (`cd server && npm test`).
+9. Executer les tests e2e backend (`cd server && npm run test:e2e`).
 
 ## Definition de Done
-Une PR qui touche l'API n'est pas terminee tant que Bruno n'est pas synchronise.
+Une PR qui touche l'API n'est pas terminee tant que Bruno n'est pas synchronise et que les tests passent.
