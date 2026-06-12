@@ -88,6 +88,7 @@
 
 ### Reward DTO
 - `CreateRewardDto`: `title`, `description?`, `cost` (prix en euros)
+- Champ `image` (Reward): chemin MinIO uploade via `PATCH /rewards/:id/image`. `imageUrl` est resolue par `MinioService.getFileUrl()` qui laisse passer les URLs absolues `http(s)://` telles quelles (cf. seed `scripts/seed-rewards.sql`).
 - `AddRewardCartItemDto`: `rewardId`, `quantity?`
 - `UpdateRewardCartItemDto`: `quantity`
 - `UpdateRewardCartDeliveryDto`: `deliveryMode`, `homeRecipient?`, `homeAddressLine1?`, `homeAddressLine2?`, `homePostalCode?`, `homeCity?`, `relayPointName?`, `relayAddress?`, `relayOption?`

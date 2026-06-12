@@ -81,6 +81,11 @@ export class MinioService implements OnModuleInit {
   }
 
   getFileUrl(fileName: string): string {
+    // Laisse passer les URLs absolues telles quelles (images externes seedées)
+    if (/^https?:\/\//i.test(fileName)) {
+      return fileName;
+    }
+
     const publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
 
     if (publicUrl) {

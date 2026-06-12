@@ -6,22 +6,24 @@ meta {
 
 post {
   url: {{host}}/users/login
+  body: json
+  auth: none
 }
 
 headers {
   content-type: application/json
 }
 
-body {
+body:json {
   {
-    email: "clement@example.com",
-    password: "StrongPass123"
+      "email": "john.doe@example.com",
+      "password": "testtest"
   }
 }
 
 script:post-response {
   const token = res.body?.token;
-
+  
   if (token) {
     bru.setVar("jwt", token);
     bru.setEnvVar("jwt", token);

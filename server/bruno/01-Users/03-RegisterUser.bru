@@ -6,19 +6,21 @@ meta {
 
 post {
   url: {{host}}/users
+  body: json
+  auth: none
 }
 
 headers {
   content-type: application/json
 }
 
-body {
-  {
-    firstName: "Clement",
-    lastName: "Maillet",
-    email: "clement@example.com",
-    password: "StrongPass123",
-    birthDate: "1990-01-01",
-    newsletter: true
-  }
+body:json {
+    {
+      "firstName": "Clement",
+      "lastName": "Maillet",
+      "email": "test@1kulte.com",
+      "password": "test123",
+      "birthDate": "1990-01-01",
+      "newsletter": true
+    }
 }
